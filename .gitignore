@@ -1,0 +1,15 @@
+# Python
+budget-backend/venv/
+budget-backend/__pycache__/
+budget-backend/**/__pycache__/
+budget-backend/dev.db
+budget-backend/.env
+*.pyc
+
+# Node / Next.js
+budget-frontend/node_modules/
+budget-frontend/.next/
+budget-frontend/.env.local
+
+# Local Node runtime bootstrap
+.nodeenv/
