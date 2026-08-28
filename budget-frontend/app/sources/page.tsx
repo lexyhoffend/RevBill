@@ -348,6 +348,7 @@ export default function SourcesPage() {
   const [billRevolving, setBillRevolving] = useState(false);
   const [billIssuer, setBillIssuer] = useState(CREDIT_CARD_ISSUERS[0]);
   const [billDueDay, setBillDueDay] = useState("");
+  const [billFormError, setBillFormError] = useState<string | null>(null);
   const needsBillName = billCategory === "Other" || billCategory === "Credit Card";
 
   function refresh() {
@@ -376,15 +377,26 @@ export default function SourcesPage() {
   async function handleAddBill(e: React.FormEvent) {
     e.preventDefault();
     const name = needsBillName ? billCustomName : billCategory;
-    if (!name) return;
-    await createBillSource({
-      name,
-      category: billCategory,
-      default_target_amount: Number(billAmount) || 0,
-      is_revolving: billRevolving,
-      credit_card_issuer: billCategory === "Credit Card" ? billIssuer : null,
-      due_day: billDueDay ? Number(billDueDay) : null,
-    });
+    if (!name) {
+      setBillFormError(
+        billCategory === "Credit Card" ? "Give this card a name first." : "Give this bill a name first."
+      );
+      return;
+    }
+    setBillFormError(null);
+    try {
+      await createBillSource({
+        name,
+        category: billCategory,
+        default_target_amount: Number(billAmount) || 0,
+        is_revolving: billRevolving,
+        credit_card_issuer: billCategory === "Credit Card" ? billIssuer : null,
+        due_day: billDueDay ? Number(billDueDay) : null,
+      });
+    } catch (err) {
+      setBillFormError(String(err));
+      return;
+    }
     setBillCustomName("");
     setBillAmount("");
     setBillRevolving(false);
@@ -547,6 +559,7 @@ export default function SourcesPage() {
         </div>
 
         <form onSubmit={handleAddBill} className="rounded-xl border border-red-200 dark:border-red-900/40 p-4 space-y-3 bg-red-50/30 dark:bg-red-950/10">
+          {billFormError && <p className="text-red-600 dark:text-red-400 text-sm">{billFormError}</p>}
           <div className="flex gap-2 flex-wrap items-center">
             <select
               value={billCategory}
@@ -562,9 +575,19 @@ export default function SourcesPage() {
             {needsBillName && (
               <input
                 value={billCustomName}
-                onChange={(e) => setBillCustomName(e.target.value)}
-                placeholder={billCategory === "Credit Card" ? "Name this card, e.g. Visa Rewards" : "Name this bill"}
-                className="flex-1 min-w-0 w-24 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
+                onChange={(e) => {
+                  setBillCustomName(e.target.value);
+                  setBillFormError(null);
+                }}
+                placeholder={
+                  billCategory === "Credit Card" ? "Name this card (required), e.g. Visa Rewards" : "Name this bill (required)"
+                }
+                required
+                className={`flex-1 min-w-40 w-40 border rounded-lg px-3 py-2 bg-transparent text-sm ${
+                  billFormError
+                    ? "border-red-400 dark:border-red-600"
+                    : "border-slate-300 dark:border-slate-600"
+                }`}
               />
             )}
             {billCategory === "Credit Card" && (
