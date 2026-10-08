@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteAccount, updateProfile } from "@/lib/api";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import InfoTooltip from "@/components/InfoTooltip";
 import PasswordInput from "@/components/PasswordInput";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -59,12 +58,7 @@ function AccountContent() {
 
   return (
     <main className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between gap-6">
-        <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">
-          ← Back
-        </Link>
-        <AccountNav />
-      </div>
+      <DashboardHeader active="/account" />
 
       <h1 className="text-2xl font-bold">Account</h1>
 

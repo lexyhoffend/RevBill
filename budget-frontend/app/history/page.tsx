@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { PayPeriodSummary, listPeriodsSummary } from "@/lib/api";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import EmptyState from "@/components/EmptyState";
 
 function fmt(n: number) {
@@ -28,12 +28,7 @@ export default function HistoryPage() {
     <RequireAuth>
       <RequirePayCycle>
       <main className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between gap-6">
-        <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">
-          ← Back
-        </Link>
-        <AccountNav />
-      </div>
+      <DashboardHeader active="/history" />
       <h1 className="text-2xl font-bold">History</h1>
       {error && <p className="text-amber-700 text-sm">{error}</p>}
 

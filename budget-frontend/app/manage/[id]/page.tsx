@@ -18,7 +18,7 @@ import {
 } from "@/lib/api";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import Confetti from "@/components/Confetti";
 import IncomeEditor from "@/components/plan/IncomeEditor";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -63,7 +63,7 @@ function ManageContent() {
   if (!plan.plannable) {
     return (
       <main className="max-w-2xl mx-auto p-6 space-y-3">
-        <Link href={`/period/${periodId}`} className="text-sm text-slate-500 hover:underline">← Back to cycle</Link>
+        <DashboardHeader active="/periods" />
         <p className="text-sm text-slate-600">This older cycle&apos;s bills were all due before its payday, so there&apos;s nothing to plan here.</p>
       </main>
     );
@@ -84,10 +84,8 @@ function ManageContent() {
 
   return (
     <main className="max-w-2xl mx-auto p-6 space-y-6 pb-40">
-      <div className="flex items-center justify-between gap-6">
-        <Link href={`/period/${p.period_id}`} className="text-sm text-slate-500 hover:underline shrink-0">← Back to cycle</Link>
-        <AccountNav />
-      </div>
+      <DashboardHeader active="/periods" />
+      <Link href={`/period/${p.period_id}`} className="text-sm text-sky-700 hover:underline">← Back to this cycle</Link>
 
       <div className="space-y-1">
         <p className="text-sm text-slate-500">

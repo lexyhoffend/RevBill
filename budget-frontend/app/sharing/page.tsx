@@ -436,8 +436,8 @@ function IncomingShares() {
                         <BillCategoryIcon category={b.category} className="w-4 h-4 shrink-0" />
                         {b.name}
                         {b.is_overdue && (
-                          <span className="text-[10px] uppercase tracking-wide font-semibold text-white bg-amber-600 rounded-full px-1.5 py-0.5">
-                            Overdue
+                          <span className="text-[10px] uppercase tracking-wide font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-full px-1.5 py-0.5">
+                            ⚠ Overdue
                           </span>
                         )}
                         {b.is_paid && (

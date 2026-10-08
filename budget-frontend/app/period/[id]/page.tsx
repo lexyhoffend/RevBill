@@ -21,7 +21,7 @@ import AddOneTimeIncome from "@/components/AddOneTimeIncome";
 import SavingsSection from "@/components/SavingsSection";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import InfoTooltip from "@/components/InfoTooltip";
 import BillMonthCalendar from "@/components/BillMonthCalendar";
 
@@ -60,12 +60,7 @@ export default function PeriodPage() {
         <main className="max-w-2xl mx-auto p-6">Loading…</main>
       ) : (
         <main className="max-w-4xl mx-auto p-6 space-y-6">
-          <div className="flex items-center justify-between gap-6">
-            <Link href="/periods" className="text-sm text-slate-500 hover:underline shrink-0">
-              ← Back
-            </Link>
-            <AccountNav />
-          </div>
+          <DashboardHeader active="/periods" />
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-bold">{period.label}</h1>
             {(period.pay_date ?? period.end_date) <= period.start_date && (

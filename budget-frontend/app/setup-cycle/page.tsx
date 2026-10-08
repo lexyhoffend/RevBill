@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PayCycleMode, listBillSources, listIncomeSources, setPayCycleMode } from "@/lib/api";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import { todayIso } from "@/lib/periodUtils";
 
 const MODE_OPTIONS: { value: PayCycleMode; label: string; description: string }[] = [
@@ -79,18 +79,16 @@ function SetupCycleFields({
 
   return (
     <main className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between gap-6">
-        {isEditing ? (
-          <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">
-            ← Back
-          </Link>
-        ) : (
+      {isEditing ? (
+        <DashboardHeader active="/sources" />
+      ) : (
+        <div className="flex items-center justify-between gap-6">
           <h1 className="text-2xl font-bold shrink-0">
             Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
           </h1>
-        )}
-        <AccountNav />
-      </div>
+          <AccountNav />
+        </div>
+      )}
       <div>
         <p className="text-sm text-slate-400 mt-1">
           {isEditing ? "Update how you manage your income and bills." : "How do you want to manage your income and bills?"}

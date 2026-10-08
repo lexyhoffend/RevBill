@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SavingsBucket, createSavingsBucket, listSavingsBuckets } from "@/lib/api";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import SavingsBucketCard from "@/components/SavingsBucketCard";
 import EmptyState from "@/components/EmptyState";
 
@@ -40,12 +39,7 @@ export default function SavingsPage() {
     <RequireAuth>
       <RequirePayCycle>
       <main className="max-w-2xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between gap-6">
-          <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">
-            ← Back
-          </Link>
-          <AccountNav />
-        </div>
+        <DashboardHeader active="/savings" />
         <h1 className="text-2xl font-bold">Savings</h1>
         {error && <p className="text-amber-700 text-sm">{error}</p>}
 

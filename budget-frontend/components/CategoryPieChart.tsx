@@ -1,16 +1,16 @@
 "use client";
 
 const COLORS = [
-  "#059669", // sky-600
+  "#0369a1", // sky-700
   "#2563eb", // blue-600
-  "#d97706", // amber-600
-  "#dc2626", // amber-600
+  "#0d9488", // teal-600
+  "#64748b", // slate-500
   "#7c3aed", // violet-600
   "#0891b2", // cyan-600
   "#db2777", // pink-600
   "#65a30d", // lime-600
   "#4f46e5", // indigo-600
-  "#ea580c", // orange-600
+  "#a16207", // yellow-700
 ];
 
 function fmt(n: number) {

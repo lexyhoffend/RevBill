@@ -24,7 +24,7 @@ import {
 import { findCurrentPeriod, todayIso } from "@/lib/periodUtils";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
-import AccountNav from "@/components/AccountNav";
+import DashboardHeader from "@/components/DashboardHeader";
 import { useConfirm } from "@/components/ConfirmProvider";
 
 function addDaysIso(iso: string, days: number) {
@@ -198,7 +198,7 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
         <button onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:underline">
           Edit
         </button>
-        <button onClick={remove} className="text-xs text-amber-700 hover:underline">
+        <button onClick={remove} className="text-xs text-slate-500 hover:text-red-700 hover:underline">
           Delete
         </button>
       </div>
@@ -243,7 +243,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
 
   if (source.shared_access_bill_id != null) {
     return (
-      <div className="flex justify-between items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
+      <div className="flex justify-between items-center py-2 border-b border-slate-100">
         <div>
           <div className="text-sm font-medium flex items-center gap-2">
             {source.name}
@@ -255,7 +255,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
             {source.category} · auto-tracked from a split -- amount updates automatically
           </div>
         </div>
-        <span className="text-amber-700 dark:text-amber-400 font-medium">
+        <span className="text-slate-800 font-medium">
           -${source.default_target_amount.toLocaleString()}
         </span>
       </div>
@@ -264,7 +264,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
 
   if (editing) {
     return (
-      <div className="flex gap-2 items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
+      <div className="flex gap-2 items-center py-2 border-b border-slate-100">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -321,7 +321,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
   }
 
   return (
-    <div className="flex justify-between items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
+    <div className="flex justify-between items-center py-2 border-b border-slate-100">
       <div>
         <div className="text-sm font-medium">
           {source.name}
@@ -335,13 +335,13 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-amber-700 dark:text-amber-400 font-medium">
+        <span className="text-slate-800 font-medium">
           -${source.default_target_amount.toLocaleString()}
         </span>
         <button onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:underline">
           Edit
         </button>
-        <button onClick={remove} className="text-xs text-amber-700 hover:underline">
+        <button onClick={remove} className="text-xs text-slate-500 hover:text-red-700 hover:underline">
           Delete
         </button>
       </div>
@@ -459,12 +459,7 @@ export default function SourcesPage() {
     <RequireAuth>
       <RequirePayCycle>
       <main className="max-w-2xl mx-auto p-6 space-y-10">
-        <div className="flex items-center justify-between gap-6">
-          <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">
-            ← Back
-          </Link>
-          <AccountNav />
-        </div>
+        <DashboardHeader active="/sources" />
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold">
@@ -584,7 +579,7 @@ export default function SourcesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-amber-700 dark:text-amber-400">Bills</h2>
+        <h2 className="font-semibold text-slate-800">Bills</h2>
         <p className="text-xs text-slate-400">
           Mark a bill "revolving" (credit cards) if you sometimes pay less than the full amount. Due day is
           optional -- set it (1–31) to get accurate due-date and overdue reminders on your dashboard,
@@ -596,7 +591,7 @@ export default function SourcesPage() {
           ))}
         </div>
 
-        <form onSubmit={handleAddBill} className="rounded-xl border border-amber-200 dark:border-amber-900/40 p-4 space-y-3 bg-amber-50/30 dark:bg-amber-950/10">
+        <form onSubmit={handleAddBill} className="rounded-xl border border-slate-200 p-4 space-y-3 bg-white">
           {billFormError && <p className="text-amber-700 dark:text-amber-400 text-sm">{billFormError}</p>}
           <div className="flex gap-2 flex-wrap items-center">
             <select
@@ -662,7 +657,7 @@ export default function SourcesPage() {
               <input type="checkbox" checked={billRevolving} onChange={(e) => setBillRevolving(e.target.checked)} />
               Revolving
             </label>
-            <button type="submit" className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
               Add Bill
             </button>
           </div>
