@@ -251,7 +251,11 @@ def create_period_with_templates(
     db.add(period)
     db.flush()
 
-    for source in db.query(IncomeSource).filter_by(user_id=user_id, active=True).all():
+    # A bridge cycle (starts after its payday) is funded by the paycheck already
+    # recorded on the cycle before it, so it gets no income rows of its own --
+    # otherwise "every cycle" monthly incomes would be counted twice.
+    is_bridge = pay_date is not None and start_date != pay_date and pay_date < start_date
+    for source in ([] if is_bridge else db.query(IncomeSource).filter_by(user_id=user_id, active=True).all()):
         occurrences = compute_income_occurrences(source, start_date, end_date)
         if occurrences == 0:
             continue  # cadence doesn't land in this period -- skip, no phantom row
@@ -304,6 +308,8 @@ def sync_income_entries_for_source(db: Session, source: IncomeSource) -> list[In
     for period in db.query(PayPeriod).filter_by(user_id=source.user_id).all():
         if period.id in already_covered:
             continue
+        if period.pay_date is not None and period.pay_date < period.start_date:
+            continue  # bridge cycle: funded by the previous cycle's paycheck
         occurrences = compute_income_occurrences(source, period.start_date, period.end_date)
         if occurrences == 0:
             continue
