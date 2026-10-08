@@ -4,6 +4,7 @@ import { useState } from "react";
 import { OnboardingData, completeOnboarding } from "@/lib/api";
 import { todayIso } from "@/lib/periodUtils";
 import Modal from "@/components/popups/Modal";
+import { money } from "@/components/plan/format";
 import { SKIP_WELCOME_KEY } from "@/components/popups/WelcomeModal";
 
 type Schedule = OnboardingData["schedule"];
@@ -25,6 +26,9 @@ const PRESETS: { name: string; category: string }[] = [
 
 const EMPTY_BILL: BillDraft = { name: "", amount: "", dueDay: "", category: "Other" };
 
+// Paychecks per month, to compare take-home pay with (monthly) bills.
+const PAYCHECKS_PER_MONTH: Record<Schedule, number> = { weekly: 52 / 12, biweekly: 26 / 12, semimonthly: 2, monthly: 1 };
+
 function nextFriday(): string {
   const d = new Date();
   d.setDate(d.getDate() + (((5 - d.getDay() + 7) % 7) || 7));
@@ -43,6 +47,7 @@ export default function OnboardingModal() {
   const [bills, setBills] = useState<BillDraft[]>([{ ...EMPTY_BILL }, { ...EMPTY_BILL }, { ...EMPTY_BILL }]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [savedBills, setSavedBills] = useState<{ name: string; amount: number }[]>([]);
 
   function setBill(i: number, patch: Partial<BillDraft>) {
     setBills((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
@@ -78,6 +83,9 @@ export default function OnboardingModal() {
     setError(null);
     setSubmitting(true);
     try {
+      const kept = includeBills
+        ? bills.filter((b) => b.name.trim() && Number(b.amount) > 0).map((b) => ({ name: b.name.trim(), amount: Number(b.amount) }))
+        : [];
       await completeOnboarding({
         take_home: Number(takeHome),
         schedule,
@@ -89,6 +97,7 @@ export default function OnboardingModal() {
               .map((b) => ({ name: b.name.trim(), amount: Number(b.amount), due_day: Number(b.dueDay) || null, category: b.category }))
           : [],
       });
+      setSavedBills(kept);
       setSubmitting(false);
       setStep(3);
     } catch (err) {
@@ -256,18 +265,80 @@ export default function OnboardingModal() {
       )}
 
       {step === 3 && (
-        <section className="space-y-5">
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-slate-900">You&apos;re off to a great start!</h2>
-            <p className="text-sm text-slate-600">
-              Next, finish setting up your payment information: add any other income and the rest of your bills.
-            </p>
-          </div>
-          <button onClick={finishManaging} className="w-full px-4 py-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-medium">
-            Finish Managing
-          </button>
-        </section>
+        <EarnedVsBills
+          earned={Math.round(Number(takeHome) * PAYCHECKS_PER_MONTH[schedule] * 100) / 100}
+          bills={savedBills}
+          onFinish={finishManaging}
+        />
       )}
     </Modal>
+  );
+}
+
+/** The payoff of setup: what they EARN in a month vs. what their bills take,
+ * and what's left -- framed as money still to manage, never as "short". */
+function EarnedVsBills({
+  earned,
+  bills,
+  onFinish,
+}: {
+  earned: number;
+  bills: { name: string; amount: number }[];
+  onFinish: () => void;
+}) {
+  const billsTotal = bills.reduce((sum, b) => sum + b.amount, 0);
+  const left = earned - billsTotal;
+  const scale = Math.max(earned, billsTotal) || 1;
+  const pct = (n: number) => `${Math.max((n / scale) * 100, n > 0 ? 2 : 0)}%`;
+
+  return (
+    <section className="space-y-5">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-slate-900">Here&apos;s your month at a glance</h2>
+        <p className="text-xs text-slate-500">Based on your take-home pay and the bills you just added.</p>
+      </div>
+
+      <div className="space-y-3" role="img" aria-label={`Earned ${money(earned)}, bills ${money(billsTotal)}, left ${money(left)}`}>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium text-slate-800">You EARN</span>
+            <span className="font-semibold text-slate-900">{money(earned)}</span>
+          </div>
+          <div className="h-4 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full rounded-full bg-sky-700" style={{ width: pct(earned) }} />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium text-slate-800">Bills</span>
+            <span className="font-semibold text-slate-900">{money(billsTotal)}</span>
+          </div>
+          <div className="h-4 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full rounded-full bg-slate-500" style={{ width: pct(billsTotal) }} />
+          </div>
+          {bills.length > 0 && (
+            <div className="text-xs text-slate-500">{bills.map((b) => `${b.name} ${money(b.amount)}`).join(" · ")}</div>
+          )}
+        </div>
+      </div>
+
+      {left >= 0 ? (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center space-y-1">
+          <div className="text-sm text-green-800">✓ Left after bills</div>
+          <div className="text-3xl font-bold text-slate-900">{money(left)}</div>
+          <div className="text-sm text-slate-700">That&apos;s more money to manage. Let&apos;s decide how you&apos;ll use it.</div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center space-y-1">
+          <div className="text-sm text-amber-900">⚠ Still to plan</div>
+          <div className="text-3xl font-bold text-slate-900">{money(-left)}</div>
+          <div className="text-sm text-slate-700">Let&apos;s finish setting up and build a plan for every bill.</div>
+        </div>
+      )}
+
+      <button onClick={onFinish} className="w-full px-4 py-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-medium">
+        Finish Managing
+      </button>
+    </section>
   );
 }
