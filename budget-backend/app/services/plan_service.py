@@ -276,7 +276,15 @@ def build_plan(db: Session, user: User, period: PayPeriod) -> dict:
     rows = _bill_rows(db, plan_period, cycle_end)
 
     bills_total = round(sum(r["planned"] for r in rows), 2)
-    future = float(plan_period.plan_future_amount or 0)
+    # Future You defaults to the "set aside each paycheck" amounts from Setup,
+    # the same way bills default to their amounts, until the user changes it.
+    if plan_period.plan_future_amount is not None:
+        future = float(plan_period.plan_future_amount)
+    else:
+        future = sum(
+            float(b.per_paycheck_amount or 0)
+            for b in db.query(SavingsBucket).filter_by(user_id=user.id).all()
+        )
     fun = float(plan_period.plan_fun_amount or 0)
     assigned = round(bills_total + future + fun, 2)
     unassigned = round(income["amount"] - assigned, 2)  # >0: dollars without a job; <0: bills without dollars
@@ -298,7 +306,7 @@ def build_plan(db: Session, user: User, period: PayPeriod) -> dict:
         "bills": rows,
         "bills_total": bills_total,
         "future_amount": round(future, 2),
-        "future_set": plan_period.plan_future_amount is not None,
+        "future_set": plan_period.plan_future_amount is not None or future > 0,
         "future_bucket": bucket,
         "fun_amount": round(fun, 2),
         "fun_set": plan_period.plan_fun_amount is not None,

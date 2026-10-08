@@ -232,18 +232,21 @@ class PayPeriodDetail(BaseModel):
 class SavingsBucketIn(BaseModel):
     name: str
     goal_amount: Optional[float] = None
+    per_paycheck_amount: Optional[float] = None
     starting_balance: float = 0  # "I already have $X saved toward this" -- seeds an initial entry
 
 
 class SavingsBucketUpdate(BaseModel):
     name: Optional[str] = None
     goal_amount: Optional[float] = None
+    per_paycheck_amount: Optional[float] = None
 
 
 class SavingsBucketOut(BaseModel):
     id: int
     name: str
     goal_amount: Optional[float]
+    per_paycheck_amount: Optional[float] = None
     total_saved: float
     percent_complete: Optional[float]  # total_saved / goal_amount * 100; null if no goal set
 

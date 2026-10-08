@@ -24,6 +24,7 @@ def _bucket_out(bucket: SavingsBucket) -> SavingsBucketOut:
         id=bucket.id,
         name=bucket.name,
         goal_amount=goal,
+        per_paycheck_amount=float(bucket.per_paycheck_amount) if bucket.per_paycheck_amount is not None else None,
         total_saved=total_saved,
         percent_complete=percent,
     )
@@ -39,7 +40,14 @@ def list_buckets(db: Session = Depends(get_db), current_user: User = Depends(get
 def create_bucket(
     payload: SavingsBucketIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    bucket = SavingsBucket(user_id=current_user.id, name=payload.name, goal_amount=payload.goal_amount)
+    if not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Give your savings goal a name")
+    bucket = SavingsBucket(
+        user_id=current_user.id,
+        name=payload.name.strip(),
+        goal_amount=payload.goal_amount,
+        per_paycheck_amount=payload.per_paycheck_amount if payload.per_paycheck_amount else None,
+    )
     db.add(bucket)
     db.flush()
 

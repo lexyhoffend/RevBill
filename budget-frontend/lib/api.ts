@@ -173,6 +173,7 @@ export type SavingsBucket = {
   id: number;
   name: string;
   goal_amount: number | null;
+  per_paycheck_amount: number | null;
   total_saved: number;
   percent_complete: number | null;
 };
@@ -363,9 +364,17 @@ export const updateBillEntry = (
 ) => jsonFetch<BillEntry>(`/periods/bill-entries/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 
 export const listSavingsBuckets = () => jsonFetch<SavingsBucket[]>("/savings/buckets");
-export const createSavingsBucket = (data: { name: string; goal_amount?: number | null; starting_balance?: number }) =>
+export const createSavingsBucket = (data: {
+  name: string;
+  goal_amount?: number | null;
+  per_paycheck_amount?: number | null;
+  starting_balance?: number;
+}) =>
   jsonFetch<SavingsBucket>("/savings/buckets", { method: "POST", body: JSON.stringify(data) });
-export const updateSavingsBucket = (id: number, data: { name?: string; goal_amount?: number | null }) =>
+export const updateSavingsBucket = (
+  id: number,
+  data: { name?: string; goal_amount?: number | null; per_paycheck_amount?: number | null }
+) =>
   jsonFetch<SavingsBucket>(`/savings/buckets/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const addToBucketBalance = (id: number, data: { amount: number; note?: string }) =>
   jsonFetch<SavingsBucket>(`/savings/buckets/${id}/balance`, { method: "POST", body: JSON.stringify(data) });

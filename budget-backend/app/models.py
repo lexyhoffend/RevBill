@@ -244,6 +244,9 @@ class SavingsBucket(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))  # e.g. "4th of July Trip", "Overall Savings"
     goal_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    # "Set aside each paycheck" -- set in Setup; pre-fills Future You when a
+    # paycheck is planned (see plan_service.build_plan). Null = no set amount.
+    per_paycheck_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True, default=None)
 
     entries: Mapped[list["SavingsEntry"]] = relationship(back_populates="bucket")
 

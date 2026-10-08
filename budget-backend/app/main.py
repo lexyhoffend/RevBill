@@ -33,6 +33,9 @@ _COLUMN_ADDITIONS = {
     "income_sources": {
         "cadence_day_of_month2": "INTEGER",
     },
+    "savings_buckets": {
+        "per_paycheck_amount": "NUMERIC(10, 2)",
+    },
 }
 
 

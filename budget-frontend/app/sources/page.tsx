@@ -26,6 +26,7 @@ import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
 import DashboardHeader from "@/components/DashboardHeader";
 import { useConfirm } from "@/components/ConfirmProvider";
+import SavingsGoalsSetup from "@/components/SavingsGoalsSetup";
 
 function addDaysIso(iso: string, days: number) {
   const d = new Date(iso);
@@ -465,7 +466,7 @@ export default function SourcesPage() {
             <h1 className="text-2xl font-bold">
               Set up Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-1">Add your payment cycles (income) and bills below.</p>
+            <p className="text-sm text-slate-400 mt-1">Add your payment cycles (income), bills, and savings goals below.</p>
             <Link href="/setup-cycle" className="text-xs text-sky-700 dark:text-sky-400 hover:underline">
               Change cycle schedule
             </Link>
@@ -675,6 +676,8 @@ export default function SourcesPage() {
           </details>
         )}
       </section>
+
+      <SavingsGoalsSetup />
       </main>
       </RequirePayCycle>
     </RequireAuth>
