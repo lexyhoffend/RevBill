@@ -3,7 +3,7 @@ import datetime
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
     BillEntry,
@@ -53,7 +53,7 @@ def _bill_due_date_in_range(
 
 
 def _bill_occurrence_satisfied(
-    db: Session, user_id: int, entry: BillEntry, due_date: datetime.date
+    db: Session, user_id: int, entry: BillEntry, due_date: datetime.date, periods: Optional[list] = None
 ) -> bool:
     """Whether this bill's due-date occurrence has actually been handled --
     checked with your own "paid" checkbox first (a revolving card payment
@@ -71,11 +71,14 @@ def _bill_occurrence_satisfied(
     prev_due = datetime.date(prev_year, prev_month, _clamp_day(prev_year, prev_month, entry.source.due_day))
     window_start = prev_due + datetime.timedelta(days=1)
 
-    overlapping_periods = (
-        db.query(PayPeriod)
-        .filter(PayPeriod.user_id == user_id, PayPeriod.start_date <= due_date, PayPeriod.end_date >= window_start)
-        .all()
-    )
+    if periods is not None:  # preloaded by the caller -- no query per bill
+        overlapping_periods = [p for p in periods if p.start_date <= due_date and p.end_date >= window_start]
+    else:
+        overlapping_periods = (
+            db.query(PayPeriod)
+            .filter(PayPeriod.user_id == user_id, PayPeriod.start_date <= due_date, PayPeriod.end_date >= window_start)
+            .all()
+        )
     overlapping_entries = [
         e for p in overlapping_periods for e in p.bill_entries if e.bill_source_id == entry.bill_source_id
     ]
@@ -455,6 +458,41 @@ def reset_untouched_upcoming_periods(db: Session, user: User) -> int:
     corrected schedule can regenerate cleanly. The cycle you're in now and any
     cycle with real activity are left alone. Returns how many were removed."""
     return _remove_untouched_periods(db, user, PayPeriod.start_date > datetime.date.today())
+
+
+def load_user_periods(db: Session, user_id: int) -> list[PayPeriod]:
+    """All of a user's cycles with their bill entries (and each entry's bill)
+    loaded in three queries total, in the same order compute_owed_balance
+    uses. Pages build everything from this instead of querying per bill --
+    every query is a network round trip to the database in production."""
+    return (
+        db.query(PayPeriod)
+        .filter(PayPeriod.user_id == user_id)
+        .order_by(PayPeriod.start_date, PayPeriod.id)
+        .options(selectinload(PayPeriod.bill_entries).selectinload(BillEntry.source))
+        .all()
+    )
+
+
+class OwedIndex:
+    """compute_owed_balance for many cards at once, from preloaded cycles."""
+
+    def __init__(self, periods: list[PayPeriod]):
+        self.position = {p.id: i for i, p in enumerate(periods)}
+        self.paid: dict[int, list[tuple[int, float]]] = {}
+        self.sources: dict[int, BillSource] = {}
+        for i, p in enumerate(periods):
+            for e in p.bill_entries:
+                self.sources[e.bill_source_id] = e.source
+                self.paid.setdefault(e.bill_source_id, []).append((i, float(e.actual_amount)))
+
+    def owed(self, bill_source_id: int, as_of_period_id: int, include_as_of: bool = True) -> float:
+        source = self.sources.get(bill_source_id)
+        if source is None or as_of_period_id not in self.position:
+            return 0.0
+        cutoff = self.position[as_of_period_id] + (1 if include_as_of else 0)
+        total_paid = sum(amount for i, amount in self.paid.get(bill_source_id, []) if i < cutoff)
+        return max(float(source.default_target_amount) - total_paid, 0.0)
 
 
 def compute_owed_balance(
@@ -964,7 +1002,7 @@ def compute_bill_calendar(db: Session, user: User) -> list[dict]:
     everywhere else, so paying ahead of the due date in an earlier cycle (or
     just checking "paid") is reflected here too."""
     today = datetime.date.today()
-    periods = db.query(PayPeriod).filter_by(user_id=user.id).order_by(PayPeriod.start_date).all()
+    periods = load_user_periods(db, user.id)
     entries = []
     for p in periods:
         for entry in p.bill_entries:
@@ -973,7 +1011,7 @@ def compute_bill_calendar(db: Session, user: User) -> list[dict]:
             due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day, p.pay_date)
             if due_date is None:
                 continue
-            satisfied = _bill_occurrence_satisfied(db, user.id, entry, due_date)
+            satisfied = _bill_occurrence_satisfied(db, user.id, entry, due_date, periods)
             entries.append(
                 {
                     "date": due_date,

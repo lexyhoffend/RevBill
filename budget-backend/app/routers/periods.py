@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -30,7 +31,9 @@ from app.services.period_service import (
     create_period_with_templates,
     cycle_income_entries,
     ensure_upcoming_periods,
+    OwedIndex,
     find_overlapping_period,
+    load_user_periods,
     split_count_for_bill,
     sync_reimbursement_bills_for_viewer,
     _bill_due_date_in_range,
@@ -53,7 +56,18 @@ def _income_entry_out(e: IncomeEntry) -> IncomeEntryOut:
     )
 
 
-def _bill_entry_out(db: Session, user_id: int, e: BillEntry, period_id: int) -> BillEntryOut:
+class _PageData:
+    """Everything a page of bill rows needs, loaded once (see load_user_periods)."""
+
+    def __init__(self, db: Session, user_id: int):
+        self.periods = load_user_periods(db, user_id)
+        self.owed = OwedIndex(self.periods)
+
+
+def _bill_entry_out(
+    db: Session, user_id: int, e: BillEntry, period_id: int, page: Optional[_PageData] = None
+) -> BillEntryOut:
+    page = page or _PageData(db, user_id)
     # Always surface the bill's real due date for this cycle (if it has one) --
     # shown next to every bill row on the period page regardless of paid status,
     # so it's a plain reference date, not just an "still outstanding" flag.
@@ -68,7 +82,7 @@ def _bill_entry_out(db: Session, user_id: int, e: BillEntry, period_id: int) -> 
     is_overdue = (
         due_date is not None
         and due_date < datetime.date.today()
-        and not _bill_occurrence_satisfied(db, user_id, e, due_date)
+        and not _bill_occurrence_satisfied(db, user_id, e, due_date, page.periods)
     )
     split_count = split_count_for_bill(db, user_id, e.bill_source_id) if e.source.split_shared else 1
     return BillEntryOut(
@@ -81,14 +95,14 @@ def _bill_entry_out(db: Session, user_id: int, e: BillEntry, period_id: int) -> 
         # cycle, so it steps down as earlier cycles pay it off, rather than the
         # stale opening balance snapshotted when the entry was created.
         target_amount=(
-            compute_owed_balance(db, user_id, e.bill_source_id, period_id, include_as_of=False)
+            page.owed.owed(e.bill_source_id, period_id, include_as_of=False)
             if e.source.is_revolving
             else float(e.target_amount)
         ),
         actual_amount=float(e.actual_amount),
         is_paid=e.is_paid,
         owed_balance=(
-            compute_owed_balance(db, user_id, e.bill_source_id, period_id) if e.source.is_revolving else 0.0
+            page.owed.owed(e.bill_source_id, period_id) if e.source.is_revolving else 0.0
         ),
         due_date=due_date,
         due_day=e.source.due_day,
@@ -204,7 +218,8 @@ def get_period(period_id: int, db: Session = Depends(get_db), current_user: User
 
     income_entries = cycle_income_entries(db, period)
     income_out = [_income_entry_out(e) for e in income_entries]
-    bill_out = [_bill_entry_out(db, current_user.id, e, period_id) for e in period.bill_entries]
+    page = _PageData(db, current_user.id)
+    bill_out = [_bill_entry_out(db, current_user.id, e, period_id, page) for e in period.bill_entries]
     savings_out = [_savings_entry_out(e) for e in period.savings_entries]
     totals = compute_period_totals(income_entries, period.bill_entries, period.savings_entries)
 

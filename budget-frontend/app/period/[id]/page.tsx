@@ -31,6 +31,7 @@ export default function PeriodPage() {
 
   const [period, setPeriod] = useState<PayPeriodDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Saves made close together (e.g. typing an amount, then checking "paid")
   // each trigger a reload, and those can come back out of order. Only the
@@ -51,6 +52,35 @@ export default function PeriodPage() {
 
   useEffect(refresh, [refresh]);
 
+  // Apply a change on screen immediately -- checkbox and the summaries at the
+  // top -- then save in the background and reconcile with the server. A
+  // failed save shows an error and reloads the real numbers.
+  function applyLocally(patch: (p: PayPeriodDetail) => PayPeriodDetail) {
+    setPeriod((p) => {
+      if (!p) return p;
+      const next = patch(p);
+      const totalIncome = next.income_entries.reduce((s, e) => s + e.actual_amount, 0);
+      const totalBills = next.bill_entries.reduce((s, e) => s + e.actual_amount, 0);
+      return {
+        ...next,
+        total_income: totalIncome,
+        total_bills_paid: totalBills,
+        left_over: totalIncome - totalBills - next.total_saved,
+      };
+    });
+  }
+
+  async function saveInBackground(save: () => Promise<unknown>) {
+    latestRequest.current++; // any reload already in flight is now stale
+    try {
+      await save();
+      setSaveError(null);
+    } catch (e) {
+      setSaveError(`Couldn't save that change: ${String(e).replace(/^Error:\s*/, "")}`);
+    }
+    refresh();
+  }
+
   return (
     <RequireAuth>
       <RequirePayCycle>
@@ -61,6 +91,11 @@ export default function PeriodPage() {
       ) : (
         <main className="max-w-4xl mx-auto p-6 space-y-6">
           <DashboardHeader active="/periods" />
+          {saveError && (
+            <p role="alert" className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠ {saveError}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-bold">{period.label}</h1>
             {(period.pay_date ?? period.end_date) <= period.start_date && (
@@ -115,11 +150,20 @@ export default function PeriodPage() {
                       key={entry.id}
                       entry={entry}
                       onSave={async (actual, isReceived) => {
-                        await updateIncomeEntry(entry.id, {
-                          actual_amount: actual,
-                          ...(isReceived !== undefined ? { is_received: isReceived } : {}),
-                        });
-                        refresh();
+                        applyLocally((p) => ({
+                          ...p,
+                          income_entries: p.income_entries.map((e) =>
+                            e.id === entry.id
+                              ? { ...e, actual_amount: actual, ...(isReceived !== undefined ? { is_received: isReceived } : {}) }
+                              : e
+                          ),
+                        }));
+                        await saveInBackground(() =>
+                          updateIncomeEntry(entry.id, {
+                            actual_amount: actual,
+                            ...(isReceived !== undefined ? { is_received: isReceived } : {}),
+                          })
+                        );
                       }}
                     />
                   ))}
@@ -150,11 +194,20 @@ export default function PeriodPage() {
                       key={entry.id}
                       entry={entry}
                       onSave={async (actual, isPaid) => {
-                        await updateBillEntry(entry.id, {
-                          actual_amount: actual,
-                          ...(isPaid !== undefined ? { is_paid: isPaid } : {}),
-                        });
-                        refresh();
+                        applyLocally((p) => ({
+                          ...p,
+                          bill_entries: p.bill_entries.map((e) =>
+                            e.id === entry.id
+                              ? { ...e, actual_amount: actual, ...(isPaid !== undefined ? { is_paid: isPaid } : {}) }
+                              : e
+                          ),
+                        }));
+                        await saveInBackground(() =>
+                          updateBillEntry(entry.id, {
+                            actual_amount: actual,
+                            ...(isPaid !== undefined ? { is_paid: isPaid } : {}),
+                          })
+                        );
                       }}
                     />
                   ))}
