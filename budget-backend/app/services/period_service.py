@@ -29,12 +29,8 @@ def _add_months(year: int, month: int, delta: int) -> tuple[int, int]:
     return year + m // 12, m % 12 + 1
 
 
-def _monthly_end_for(year: int, month: int, anchor_day: int) -> datetime.date:
-    return datetime.date(year, month, _clamp_day(year, month, anchor_day))
-
-
 def _bill_due_date_in_range(
-    start: datetime.date, end: datetime.date, due_day: Optional[int]
+    start: datetime.date, end: datetime.date, due_day: Optional[int], fallback: Optional[datetime.date] = None
 ) -> Optional[datetime.date]:
     """The calendar date `due_day` falls on within [start, end] -- e.g. rent due
     the 1st of the month, within a cycle spanning two months. Falls back to
@@ -45,7 +41,7 @@ def _bill_due_date_in_range(
     every other cycle), so this cycle's copy shouldn't be shown as due, let
     alone overdue."""
     if due_day is None:
-        return end
+        return fallback or end
     year, month = start.year, start.month
     while True:
         candidate = datetime.date(year, month, _clamp_day(year, month, due_day))
@@ -89,38 +85,76 @@ def _bill_occurrence_satisfied(
     return total_paid >= float(entry.target_amount)
 
 
-def _first_monthly_end(anchor_day: int, today: datetime.date) -> datetime.date:
-    """The pay-date-aligned month end covering today -- the smallest monthly boundary
-    on/after today, since a period ends on its pay date (e.g. paid on the 15th covers
-    the prior month's 16th through this month's 15th)."""
-    candidate = _monthly_end_for(today.year, today.month, anchor_day)
-    if candidate < today:
-        y, m = _add_months(today.year, today.month, 1)
-        candidate = _monthly_end_for(y, m, anchor_day)
-    return candidate
+AUTO_MODES = ("weekly", "biweekly", "semimonthly", "monthly")
+PAYDAY_LAYOUT = "payday"
 
 
-def _monthly_start_for_end(period_end: datetime.date, anchor_day: int) -> datetime.date:
-    y, m = _add_months(period_end.year, period_end.month, -1)
-    return _monthly_end_for(y, m, anchor_day) + datetime.timedelta(days=1)
+def is_auto_mode(user: User) -> bool:
+    return user.pay_cycle_mode in AUTO_MODES
 
 
-def _next_monthly_end(period_end: datetime.date, anchor_day: int) -> datetime.date:
-    y, m = _add_months(period_end.year, period_end.month, 1)
-    return _monthly_end_for(y, m, anchor_day)
+def _month_paydays(user: User, year: int, month: int) -> list[datetime.date]:
+    days = [user.pay_cycle_anchor_day or 1]
+    if user.pay_cycle_mode == "semimonthly":
+        days.append(user.pay_cycle_anchor_day2 or 31)
+    return sorted({datetime.date(year, month, _clamp_day(year, month, d)) for d in days})
 
 
-def _first_stepwise_end(anchor_date: datetime.date, step_days: int, today: datetime.date) -> datetime.date:
-    """The pay-date-aligned period end covering today -- the smallest anchor_date +
-    k*step_days that is >= today, so a period always ends ON a pay date and covers
-    the step_days before it (e.g. paid 8/7 biweekly covers 7/25-8/7)."""
-    delta_days = (today - anchor_date).days
-    k = -(-delta_days // step_days)  # ceiling division, correct for negative delta too
-    return anchor_date + datetime.timedelta(days=k * step_days)
+def next_payday_after(user: User, d: datetime.date) -> datetime.date:
+    """The first payday strictly after `d` on the user's schedule."""
+    if user.pay_cycle_mode in ("weekly", "biweekly"):
+        step = 7 if user.pay_cycle_mode == "weekly" else 14
+        anchor = user.pay_cycle_anchor_date
+        k = (d - anchor).days // step + 1  # floor division, correct for negatives too
+        return anchor + datetime.timedelta(days=k * step)
+    year, month = d.year, d.month
+    for _ in range(3):
+        for payday in _month_paydays(user, year, month):
+            if payday > d:
+                return payday
+        year, month = _add_months(year, month, 1)
+    raise RuntimeError("No payday found")  # unreachable for valid schedules
 
 
-def _stepwise_start(period_end: datetime.date, step_days: int) -> datetime.date:
-    return period_end - datetime.timedelta(days=step_days - 1)
+def payday_on_or_before(user: User, d: datetime.date) -> datetime.date:
+    """The most recent payday on or before `d`."""
+    if user.pay_cycle_mode in ("weekly", "biweekly"):
+        step = 7 if user.pay_cycle_mode == "weekly" else 14
+        anchor = user.pay_cycle_anchor_date
+        return anchor + datetime.timedelta(days=((d - anchor).days // step) * step)
+    year, month = d.year, d.month
+    for _ in range(3):
+        for payday in reversed(_month_paydays(user, year, month)):
+            if payday <= d:
+                return payday
+        year, month = _add_months(year, month, -1)
+    raise RuntimeError("No payday found")
+
+
+def _next_cycle_bounds(
+    user: User, latest: Optional[PayPeriod], first_payday: Optional[datetime.date] = None
+) -> tuple[datetime.date, datetime.date, datetime.date]:
+    """(start, end, pay_date) of the next payday-layout cycle. A cycle runs
+    from a payday to the day before the next one. If the day after `latest`
+    isn't a payday -- the switch from the legacy layout, or a schedule change
+    -- the gap up to the next payday becomes a "bridge" cycle that shares
+    `latest`'s pay_date, since that paycheck is what funds it."""
+    if latest is None:
+        start = first_payday or payday_on_or_before(user, datetime.date.today())
+    else:
+        start = latest.end_date + datetime.timedelta(days=1)
+    upcoming = next_payday_after(user, start - datetime.timedelta(days=1))  # first payday >= start
+    if upcoming == start or latest is None:
+        start = upcoming if latest is None else start
+        return start, next_payday_after(user, start) - datetime.timedelta(days=1), start
+    return start, upcoming - datetime.timedelta(days=1), latest.pay_date or latest.end_date
+
+
+def _cycle_label(start: datetime.date, end: datetime.date, pay_date: datetime.date) -> str:
+    label = f"Payment Cycle {pay_date.strftime('%-m/%-d/%Y')}"
+    if start != pay_date:
+        label += f" (bills {start.strftime('%-m/%-d')}-{end.strftime('%-m/%-d')})"
+    return label
 
 
 def find_overlapping_period(
@@ -176,11 +210,44 @@ def compute_income_occurrences(source: IncomeSource, period_start: datetime.date
             d += datetime.timedelta(days=1)
         return count
 
+    if source.cadence_type == "semimonthly":
+        days = (source.cadence_day_of_month or 1, source.cadence_day_of_month2 or 31)
+        count = 0
+        d = period_start
+        while d <= period_end:
+            if d >= source.start_date and d.day in {_clamp_day(d.year, d.month, x) for x in days}:
+                count += 1
+            d += datetime.timedelta(days=1)
+        return count
+
     return 0
 
 
-def create_period_with_templates(db: Session, user_id: int, label: str, start_date, end_date) -> PayPeriod:
-    period = PayPeriod(user_id=user_id, label=label, start_date=start_date, end_date=end_date)
+def cycle_income_entries(db: Session, period: PayPeriod) -> list[IncomeEntry]:
+    """Income that funds this cycle. Normally just its own entries; a bridge
+    cycle (created when the layout switched, starting after its payday) also
+    gets the paycheck recorded on the legacy cycle that shares its pay_date."""
+    entries = list(period.income_entries)
+    pay = period.pay_date or period.end_date
+    if period.start_date > pay:
+        siblings = (
+            db.query(PayPeriod)
+            .filter(PayPeriod.user_id == period.user_id, PayPeriod.pay_date == pay, PayPeriod.id != period.id)
+            .all()
+        )
+        for sibling in siblings:
+            entries.extend(sibling.income_entries)
+    return entries
+
+
+def create_period_with_templates(
+    db: Session, user_id: int, label: str, start_date, end_date, pay_date=None
+) -> PayPeriod:
+    # Manually created (custom-mode) cycles keep the legacy meaning: they end
+    # on their payday.
+    period = PayPeriod(
+        user_id=user_id, label=label, start_date=start_date, end_date=end_date, pay_date=pay_date or end_date
+    )
     db.add(period)
     db.flush()
 
@@ -301,96 +368,54 @@ def remove_untouched_entries_for_source(db: Session, source: BillSource) -> None
     db.commit()
 
 
-def _next_boundary_after(user: User, prev_end: Optional[datetime.date]) -> tuple[datetime.date, datetime.date]:
-    """Compute the (start, end) of the next cycle for the user's auto-generating
-    pay_cycle_mode, given the end date of the prior cycle (or None for the very
-    first one, in which case it's derived from the anchor). Shared by the
-    rolling-horizon generator and the manual "add one more cycle" action so both
-    always agree on what the correct next bill date is."""
-    is_monthly = user.pay_cycle_mode == "monthly"
-    step_days = 14 if user.pay_cycle_mode == "biweekly" else 7
-    today = datetime.date.today()
-
-    if prev_end is not None:
-        next_end = (
-            _next_monthly_end(prev_end, user.pay_cycle_anchor_day)
-            if is_monthly
-            else prev_end + datetime.timedelta(days=step_days)
-        )
-    elif is_monthly:
-        next_end = _first_monthly_end(user.pay_cycle_anchor_day, today)
-    else:
-        next_end = user.pay_cycle_anchor_date
-
-    next_start = (
-        _monthly_start_for_end(next_end, user.pay_cycle_anchor_day)
-        if is_monthly
-        else _stepwise_start(next_end, step_days)
-    )
-    return next_start, next_end
-
-
 def add_next_period(db: Session, user: User) -> PayPeriod:
     """Manually create exactly one more cycle beyond the user's latest existing
     period, using the same cadence math as the rolling auto-generator -- for
     planning further ahead than the 6-month horizon reaches. Only valid for
     accounts on an auto-generating pay_cycle_mode."""
+    if user.cycle_layout != PAYDAY_LAYOUT:
+        _switch_to_payday_layout(db, user)
     latest = db.query(PayPeriod).filter_by(user_id=user.id).order_by(PayPeriod.end_date.desc()).first()
-    next_start, next_end = _next_boundary_after(user, latest.end_date if latest else None)
-
-    # Skip past anything that already collides (e.g. a legacy manually-created
-    # period) rather than erroring -- matches ensure_upcoming_periods' behavior.
-    guard = 0
-    while find_overlapping_period(db, user.id, next_start, next_end) is not None and guard < 200:
-        guard += 1
-        next_start, next_end = _next_boundary_after(user, next_end)
-
-    label = f"Payment Cycle {next_end.strftime('%-m/%-d/%Y')}"
-    return create_period_with_templates(db, user.id, label, next_start, next_end)
+    start, end, pay_date = _next_cycle_bounds(user, latest)
+    return create_period_with_templates(db, user.id, _cycle_label(start, end, pay_date), start, end, pay_date)
 
 
-def ensure_upcoming_periods(db: Session, user: User, horizon_months: int = 6) -> list[PayPeriod]:
+def _switch_to_payday_layout(db: Session, user: User) -> None:
+    """One-time move of a legacy account (cycles ending on paydays) to the
+    payday layout. Cycles that are past, current, or have any activity are
+    left exactly as they are; only untouched future ones are removed, and
+    generation resumes after the last kept cycle (via a bridge cycle)."""
+    _remove_untouched_periods(db, user, PayPeriod.end_date >= datetime.date.today())
+    user.cycle_layout = PAYDAY_LAYOUT
+    db.commit()
+
+
+def ensure_upcoming_periods(
+    db: Session, user: User, horizon_months: int = 6, first_payday: Optional[datetime.date] = None
+) -> list[PayPeriod]:
     """Keep upcoming Payment Cycles generated out to `horizon_months` months from
     today, for accounts on an auto-generating pay_cycle_mode -- a calendar horizon,
-    not a fixed cycle count, so a biweekly cadence generates ~13 cycles to cover 6
-    months rather than stopping after 6 cycles (~3 months). No-op for "custom"
-    (fully manual, unchanged) or an unset mode (user hasn't chosen yet). Safe to
-    call on every page load -- it's a handful of cheap queries once the window is
-    already full."""
-    if not user.pay_cycle_mode or user.pay_cycle_mode == "custom":
+    not a fixed cycle count. No-op for "custom" (fully manual) or an unset mode.
+    Safe to call on every page load -- a couple of cheap queries once the window
+    is already full. `first_payday` starts a brand-new account's first cycle (from
+    onboarding); otherwise an empty account starts at the cycle containing today."""
+    if not is_auto_mode(user):
         return []
+    if user.cycle_layout != PAYDAY_LAYOUT:
+        _switch_to_payday_layout(db, user)
 
     today = datetime.date.today()
     hy, hm = _add_months(today.year, today.month, horizon_months)
     horizon_end = datetime.date(hy, hm, _clamp_day(hy, hm, today.day))
 
     latest = db.query(PayPeriod).filter(PayPeriod.user_id == user.id).order_by(PayPeriod.end_date.desc()).first()
-    if latest is not None and latest.end_date >= horizon_end:
-        return []
-
-    next_start, next_end = _next_boundary_after(user, latest.end_date if latest is not None else None)
-
     created: list[PayPeriod] = []
     guard = 0
-    while guard < 400:
+    while guard < 400 and (latest is None or latest.end_date < horizon_end):
         guard += 1
-        is_backfill = next_end < today
-
-        # Stop once a new (non-backfill) cycle would start beyond the horizon --
-        # everything up to and covering horizon_end has already been generated.
-        if not is_backfill and next_start > horizon_end:
-            break
-
-        # A boundary that collides with a pre-existing (e.g. legacy manually-created)
-        # period is skipped entirely -- not an error -- and generation resumes right
-        # after it. Backfilled (past) cycles are always created unconditionally.
-        if find_overlapping_period(db, user.id, next_start, next_end) is None:
-            label = f"Payment Cycle {next_end.strftime('%-m/%-d/%Y')}"
-            period = create_period_with_templates(db, user.id, label, next_start, next_end)
-            created.append(period)
-
-        next_start, next_end = _next_boundary_after(user, next_end)
-
+        start, end, pay_date = _next_cycle_bounds(user, latest, first_payday)
+        latest = create_period_with_templates(db, user.id, _cycle_label(start, end, pay_date), start, end, pay_date)
+        created.append(latest)
     return created
 
 
@@ -401,27 +426,29 @@ def _period_is_untouched(period: PayPeriod) -> bool:
         return False
     if period.savings_entries:
         return False
+    if period.managed_at or period.plan_future_amount is not None or period.plan_fun_amount is not None:
+        return False
+    if any(e.planned_amount is not None or float(e.deferred_amount or 0) != 0 for e in period.bill_entries):
+        return False
     return True
 
 
-def reset_untouched_upcoming_periods(db: Session, user: User) -> int:
-    """When the user edits their schedule, clear out auto-generated periods that
-    haven't been touched yet (no income received, no bills paid, no savings moved)
-    so the corrected schedule can regenerate cleanly. A period with any real activity
-    is left alone -- delete it manually if you don't want it. Returns how many were
-    removed."""
-    today = datetime.date.today()
-    candidates = db.query(PayPeriod).filter(PayPeriod.user_id == user.id, PayPeriod.end_date >= today).all()
+def _remove_untouched_periods(db: Session, user: User, condition) -> int:
     removed = 0
-    for period in candidates:
+    for period in db.query(PayPeriod).filter(PayPeriod.user_id == user.id, condition).all():
         if _period_is_untouched(period):
-            db.query(IncomeEntry).filter_by(period_id=period.id).delete()
-            db.query(BillEntry).filter_by(period_id=period.id).delete()
-            db.query(SavingsEntry).filter_by(period_id=period.id).delete()
-            db.delete(period)
+            db.delete(period)  # entries go with it (cascade on PayPeriod's relationships)
             removed += 1
     db.commit()
     return removed
+
+
+def reset_untouched_upcoming_periods(db: Session, user: User) -> int:
+    """When the user edits their schedule, clear out future cycles that haven't
+    been touched yet (nothing received, paid, saved, or planned) so the
+    corrected schedule can regenerate cleanly. The cycle you're in now and any
+    cycle with real activity are left alone. Returns how many were removed."""
+    return _remove_untouched_periods(db, user, PayPeriod.start_date > datetime.date.today())
 
 
 def compute_owed_balance(
@@ -497,10 +524,10 @@ def _project_payoff_date(
     cycles_needed = -(-int(running * 100) // int(avg_payment * 100))  # ceil division, cents-safe
     last_end = upcoming[-1].end_date if upcoming else current.end_date
 
-    if user.pay_cycle_mode and user.pay_cycle_mode != "custom":
+    if is_auto_mode(user):
         end = last_end
         for _ in range(cycles_needed):
-            _, end = _next_boundary_after(user, end)
+            end = next_payday_after(user, end)
         return end
 
     # "custom" (or unset) has no fixed cadence -- fall back to the account's
@@ -527,13 +554,13 @@ def compute_period_totals(income_entries, bill_entries, savings_entries=()) -> d
 
 
 def find_current_period(periods: list[PayPeriod], today: datetime.date) -> Optional[PayPeriod]:
-    """The period you're actively living in: the most recent one whose pay date
-    (end_date) has already arrived -- not just whichever date range today falls
-    into. A period doesn't become "current" until its own pay date hits, even
-    though the next one's date range technically started the day before."""
-    completed = [p for p in periods if p.end_date <= today]
-    if completed:
-        return max(completed, key=lambda p: p.end_date)
+    """The cycle you're actively living in: the one belonging to the most recent
+    payday that has arrived. Among cycles sharing that payday (a legacy cycle
+    and the bridge after it), the latest one that has started wins. Falls back
+    to the soonest upcoming cycle, else the most recently started one."""
+    started = [p for p in periods if (p.pay_date or p.end_date) <= today and p.start_date <= today]
+    if started:
+        return max(started, key=lambda p: (p.pay_date or p.end_date, p.start_date))
     upcoming = [p for p in periods if p.start_date >= today]
     if upcoming:
         return min(upcoming, key=lambda p: p.start_date)
@@ -555,7 +582,9 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
 
     current_totals = {"total_income": 0.0, "total_bills_paid": 0.0, "total_saved": 0.0, "left_over": 0.0}
     if current is not None:
-        current_totals = compute_period_totals(current.income_entries, current.bill_entries, current.savings_entries)
+        current_totals = compute_period_totals(
+            cycle_income_entries(db, current), current.bill_entries, current.savings_entries
+        )
 
     total_owed = 0.0
     cards_owed = []
@@ -598,7 +627,7 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
             )
             shortfall = target - float(entry.actual_amount)
             if shortfall > 0:
-                due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day)
+                due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day, p.pay_date)
                 if due_date is None:
                     # This bill's due_day doesn't fall in this cycle -- a
                     # different cycle covers its real due date, so this copy
@@ -643,14 +672,15 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
                 entry.actual_amount
             )
     for p in periods:
-        if p.end_date.year != today.year:
+        pay = p.pay_date or p.end_date
+        if pay.year != today.year:
             continue
         for entry in p.bill_entries:
             if entry.source.is_revolving or float(entry.actual_amount) <= 0:
                 continue
             amount = float(entry.actual_amount)
             annual_by_category[entry.source.category] = annual_by_category.get(entry.source.category, 0.0) + amount
-            if p.end_date.month == today.month:
+            if pay.month == today.month:
                 monthly_by_category[entry.source.category] = (
                     monthly_by_category.get(entry.source.category, 0.0) + amount
                 )
@@ -677,13 +707,14 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
     annual_income_by_source: dict[str, float] = {}
     cycle_income_by_source: dict[str, float] = {}
     if current is not None:
-        for entry in current.income_entries:
+        for entry in cycle_income_entries(db, current):
             if float(entry.actual_amount) <= 0:
                 continue
             name = entry.source.name if entry.income_source_id else entry.custom_label
             cycle_income_by_source[name] = cycle_income_by_source.get(name, 0.0) + float(entry.actual_amount)
     for p in periods:
-        if p.end_date.year != today.year:
+        pay = p.pay_date or p.end_date
+        if pay.year != today.year:
             continue
         for entry in p.income_entries:
             if float(entry.actual_amount) <= 0:
@@ -691,7 +722,7 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
             name = entry.source.name if entry.income_source_id else entry.custom_label
             amount = float(entry.actual_amount)
             annual_income_by_source[name] = annual_income_by_source.get(name, 0.0) + amount
-            if p.end_date.month == today.month:
+            if pay.month == today.month:
                 monthly_income_by_source[name] = monthly_income_by_source.get(name, 0.0) + amount
 
     income_sources_breakdown = []
@@ -727,17 +758,22 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
     # framing of the rest of the page.
     estimated_income_per_cycle = None
     estimated_bills_per_cycle = None
+    # Grouped by payday, so a legacy cycle and the bridge after it (same
+    # paycheck) count as one cycle.
     past_active = []
     if current is not None:
+        current_pay = current.pay_date or current.end_date
+        groups: dict[datetime.date, list[PayPeriod]] = {}
         for p in periods:
-            if p.end_date >= current.end_date:
-                continue
-            income = sum(float(e.actual_amount) for e in p.income_entries if e.income_source_id is not None)
-            bills = sum(float(e.actual_amount) for e in p.bill_entries if not e.source.is_revolving)
-            any_activity = any(float(e.actual_amount) > 0 for e in p.income_entries) or any(
-                float(e.actual_amount) > 0 for e in p.bill_entries
-            )
-            if any_activity:
+            pay = p.pay_date or p.end_date
+            if pay < current_pay:
+                groups.setdefault(pay, []).append(p)
+        for group in groups.values():
+            income_entries = [e for p in group for e in p.income_entries]
+            bill_entries = [e for p in group for e in p.bill_entries]
+            income = sum(float(e.actual_amount) for e in income_entries if e.income_source_id is not None)
+            bills = sum(float(e.actual_amount) for e in bill_entries if not e.source.is_revolving)
+            if any(float(e.actual_amount) > 0 for e in income_entries + bill_entries):
                 past_active.append((income, bills))
     if past_active:
         estimated_income_per_cycle = sum(i for i, _ in past_active) / len(past_active)
@@ -928,7 +964,7 @@ def compute_bill_calendar(db: Session, user: User) -> list[dict]:
         for entry in p.bill_entries:
             if entry.source.due_day is None:
                 continue
-            due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day)
+            due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day, p.pay_date)
             if due_date is None:
                 continue
             satisfied = _bill_occurrence_satisfied(db, user.id, entry, due_date)
@@ -979,7 +1015,7 @@ def compute_shared_view(db: Session, shared: SharedAccess) -> dict:
             if entry.bill_source_id not in shared_bill_ids:
                 continue
             due_date = (
-                _bill_due_date_in_range(current.start_date, current.end_date, entry.source.due_day)
+                _bill_due_date_in_range(current.start_date, current.end_date, entry.source.due_day, current.pay_date)
                 if entry.source.due_day is not None
                 else None
             )

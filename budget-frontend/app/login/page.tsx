@@ -31,12 +31,12 @@ export default function LoginPage() {
     <main className="max-w-sm mx-auto p-6 mt-16 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">
-          Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+          Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
         </h1>
         <p className="text-sm text-slate-400 mt-1">Log in</p>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <input
@@ -51,7 +51,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+          className="w-full px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {submitting ? "Logging in…" : "Log in"}
         </button>
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
       <p className="text-sm text-slate-400">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+        <Link href="/signup" className="text-sky-700 dark:text-sky-400 hover:underline">
           Sign up
         </Link>
       </p>

@@ -9,9 +9,10 @@ import AccountNav from "@/components/AccountNav";
 import { todayIso } from "@/lib/periodUtils";
 
 const MODE_OPTIONS: { value: PayCycleMode; label: string; description: string }[] = [
-  { value: "monthly", label: "Monthly", description: "One cycle per month, covering the month before a pay date you choose (e.g. paid on the 15th)." },
-  { value: "biweekly", label: "Bi-weekly", description: "A new cycle every 2 weeks, each one ending on a pay date you choose." },
-  { value: "weekly", label: "Weekly", description: "A new cycle every week, each one ending on a pay date you choose." },
+  { value: "weekly", label: "Weekly", description: "A new cycle every week, starting on your payday." },
+  { value: "biweekly", label: "Bi-weekly", description: "A new cycle every 2 weeks, starting on your payday." },
+  { value: "semimonthly", label: "Twice a month", description: "Paid on two set days each month (e.g. the 15th and the last day)." },
+  { value: "monthly", label: "Monthly", description: "One cycle per month, starting on the day you get paid." },
   { value: "custom", label: "Custom", description: "You'll create each cycle yourself, whenever you want." },
 ];
 
@@ -38,11 +39,17 @@ function SetupCycleFields({
   initial,
 }: {
   isEditing: boolean;
-  initial: { pay_cycle_mode: PayCycleMode | null; pay_cycle_anchor_day: number | null; pay_cycle_anchor_date: string | null };
+  initial: {
+    pay_cycle_mode: PayCycleMode | null;
+    pay_cycle_anchor_day: number | null;
+    pay_cycle_anchor_day2: number | null;
+    pay_cycle_anchor_date: string | null;
+  };
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<PayCycleMode>(initial.pay_cycle_mode ?? "biweekly");
   const [anchorDay, setAnchorDay] = useState(String(initial.pay_cycle_anchor_day ?? 15));
+  const [anchorDay2, setAnchorDay2] = useState(String(initial.pay_cycle_anchor_day2 ?? 31));
   const [anchorDate, setAnchorDate] = useState(initial.pay_cycle_anchor_date ?? todayIso());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +61,8 @@ function SetupCycleFields({
     try {
       await setPayCycleMode({
         mode,
-        anchor_day: mode === "monthly" ? Number(anchorDay) : null,
+        anchor_day: mode === "monthly" || mode === "semimonthly" ? Number(anchorDay) : null,
+        anchor_day2: mode === "semimonthly" ? Number(anchorDay2) : null,
         anchor_date: mode === "weekly" || mode === "biweekly" ? anchorDate : null,
       });
       if (isEditing) {
@@ -78,7 +86,7 @@ function SetupCycleFields({
           </Link>
         ) : (
           <h1 className="text-2xl font-bold shrink-0">
-            Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+            Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
           </h1>
         )}
         <AccountNav />
@@ -95,7 +103,7 @@ function SetupCycleFields({
         )}
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -104,7 +112,7 @@ function SetupCycleFields({
               key={opt.value}
               className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer ${
                 mode === opt.value
-                  ? "border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20"
+                  ? "border-sky-400 bg-sky-50/40 dark:bg-sky-950/20"
                   : "border-slate-200 dark:border-slate-700"
               }`}
             >
@@ -138,6 +146,32 @@ function SetupCycleFields({
           </label>
         )}
 
+        {mode === "semimonthly" && (
+          <div className="flex items-center gap-2 text-sm flex-wrap">
+            Pay days each month
+            <input
+              value={anchorDay}
+              onChange={(e) => setAnchorDay(e.target.value)}
+              type="number"
+              min={1}
+              max={31}
+              aria-label="First pay day"
+              className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
+            />
+            and
+            <input
+              value={anchorDay2}
+              onChange={(e) => setAnchorDay2(e.target.value)}
+              type="number"
+              min={1}
+              max={31}
+              aria-label="Second pay day"
+              className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
+            />
+            <span className="text-xs text-slate-400">(31 means the last day of the month)</span>
+          </div>
+        )}
+
         {(mode === "weekly" || mode === "biweekly") && (
           <label className="flex items-center gap-2 text-sm">
             A recent or upcoming pay date
@@ -153,7 +187,7 @@ function SetupCycleFields({
         <button
           type="submit"
           disabled={submitting}
-          className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+          className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {submitting ? "Saving…" : isEditing ? "Save changes" : "Continue"}
         </button>

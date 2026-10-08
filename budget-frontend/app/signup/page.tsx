@@ -29,8 +29,8 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, agreed);
-      // New accounts go straight into Setup to add their Payment Cycles and bills
-      router.push("/sources");
+      // New accounts go through the 90-second onboarding
+      router.push("/welcome");
     } catch (err) {
       setError(String(err).replace(/^Error:\s*/, ""));
     } finally {
@@ -42,12 +42,12 @@ export default function SignupPage() {
     <main className="max-w-sm mx-auto p-6 mt-16 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">
-          Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+          Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
         </h1>
         <p className="text-sm text-slate-400 mt-1">Create your account</p>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <input
@@ -72,15 +72,15 @@ export default function SignupPage() {
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
             required
-            className="w-4 h-4 mt-px accent-emerald-600 shrink-0"
+            className="w-4 h-4 mt-px accent-sky-700 shrink-0"
           />
           <span>
             I am 18 or older and agree to the{" "}
-            <Link href="/terms" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+            <Link href="/terms" target="_blank" className="text-sky-700 dark:text-sky-400 hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+            <Link href="/privacy" target="_blank" className="text-sky-700 dark:text-sky-400 hover:underline">
               Privacy Policy
             </Link>
             .
@@ -89,7 +89,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={submitting || !agreed}
-          className="w-full px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+          className="w-full px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {submitting ? "Creating account…" : "Create account"}
         </button>
@@ -97,7 +97,7 @@ export default function SignupPage() {
 
       <p className="text-sm text-slate-400">
         Already have an account?{" "}
-        <Link href="/login" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+        <Link href="/login" className="text-sky-700 dark:text-sky-400 hover:underline">
           Log in
         </Link>
       </p>

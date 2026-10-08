@@ -30,7 +30,7 @@ class User(Base):
     # Record of agreeing to the Terms of Service and Privacy Policy: when, and
     # which version (app.legal.CURRENT_TERMS_VERSION at the time). Null for
     # accounts created before the policies existed until they accept. Added
-    # to existing databases by app.main._add_missing_user_columns.
+    # to existing databases by app.main._add_missing_columns.
     terms_accepted_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True, default=None)
     terms_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
 
@@ -44,6 +44,15 @@ class User(Base):
     pay_cycle_mode: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
     pay_cycle_anchor_day: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
     pay_cycle_anchor_date: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True, default=None)
+    # Second pay day of the month for "semimonthly" (first is pay_cycle_anchor_day),
+    # e.g. 15 and 31 -- 31 clamps to the month's last day.
+    pay_cycle_anchor_day2: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
+    # How auto-generated cycles are laid out. "payday" (current): each cycle
+    # STARTS on a payday and runs to the day before the next one, so its bills
+    # are the ones that paycheck actually pays. Null = legacy layout (cycles
+    # END on the payday); ensure_upcoming_periods switches those accounts over
+    # once, leaving existing cycles untouched -- see _switch_to_payday_layout.
+    cycle_layout: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default=None)
 
 
     @property
@@ -66,6 +75,7 @@ class IncomeSource(Base):
     cadence_type: Mapped[str] = mapped_column(String(20))  # monthly_date | weekly | biweekly
     cadence_day_of_month: Mapped[Optional[int]] = mapped_column(nullable=True)  # 1-31, monthly_date only
     cadence_weekday: Mapped[Optional[int]] = mapped_column(nullable=True)  # 0=Mon..6=Sun, weekly/biweekly only
+    cadence_day_of_month2: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)  # semimonthly second day
     start_date: Mapped[datetime.date] = mapped_column(Date)  # anchor date; cadence begins here
     amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)  # positive, per occurrence
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -114,6 +124,19 @@ class PayPeriod(Base):
     label: Mapped[str] = mapped_column(String(255))  # e.g. "PayStub 6/26/26"
     start_date: Mapped[datetime.date] = mapped_column(Date)
     end_date: Mapped[datetime.date] = mapped_column(Date)
+    # The payday this cycle belongs to. Payday-layout cycles: start_date.
+    # Legacy cycles: end_date (backfilled on startup). A "bridge" cycle created
+    # when an account switches layouts shares its pay_date with the legacy cycle
+    # before it, since the same paycheck funds both -- periods sharing a
+    # pay_date form one paycheck group (see period_service.paycheck_group).
+    pay_date: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True, default=None)
+
+    # "Manage My Pay Cycle" plan for this paycheck (bills' planned amounts live
+    # on BillEntry). Null = not set yet.
+    plan_future_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True, default=None)
+    plan_future_bucket_id: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
+    plan_fun_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True, default=None)
+    managed_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True, default=None)
 
     # Explicit order_by: without it Postgres returns rows in physical order, and
     # an UPDATE rewrites the row elsewhere -- so checking an item off would
@@ -153,6 +176,11 @@ class BillEntry(Base):
     target_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     actual_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     is_paid: Mapped[bool] = mapped_column(default=False)
+    # Plan for this paycheck: how much of this bill it pays (null = the
+    # default, see period_service.default_planned_amount) and how much is
+    # pushed to the next paycheck (moved or split).
+    planned_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True, default=None)
+    deferred_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
 
     period: Mapped["PayPeriod"] = relationship(back_populates="bill_entries")
     source: Mapped["BillSource"] = relationship(back_populates="entries")
@@ -234,3 +262,17 @@ class SavingsEntry(Base):
 
     period: Mapped[Optional["PayPeriod"]] = relationship(back_populates="savings_entries")
     bucket: Mapped["SavingsBucket"] = relationship(back_populates="entries")
+
+
+class Event(Base):
+    """First-party product events (never sent to a third party): account
+    created, onboarding completed, pay cycle managed. `data` is a small JSON
+    string of details, e.g. {"days_after_payday": 2}."""
+
+    __tablename__ = "events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), index=True)
+    data: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True, default=None)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)

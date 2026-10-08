@@ -47,7 +47,7 @@ export default function SavingsPage() {
           <AccountNav />
         </div>
         <h1 className="text-2xl font-bold">Savings</h1>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-amber-700 text-sm">{error}</p>}
 
         {buckets.length === 0 ? (
           <EmptyState
@@ -65,9 +65,9 @@ export default function SavingsPage() {
 
         <form
           onSubmit={handleAdd}
-          className="rounded-xl border border-emerald-200 p-4 space-y-3 bg-emerald-50/40"
+          className="rounded-xl border border-sky-200 p-4 space-y-3 bg-sky-50/40"
         >
-          <div className="text-sm font-medium text-emerald-700">Add a savings goal</div>
+          <div className="text-sm font-medium text-sky-700">Add a savings goal</div>
           <div className="flex gap-2 flex-wrap">
             <input
               value={name}
@@ -89,7 +89,7 @@ export default function SavingsPage() {
               placeholder="Already saved $ (optional)"
               className="w-40 border border-slate-300 rounded-lg px-3 py-2 bg-transparent text-sm"
             />
-            <button type="submit" className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+            <button type="submit" className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
               Add bucket
             </button>
           </div>

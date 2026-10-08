@@ -106,7 +106,7 @@ function CalendarContent() {
     <main className="max-w-2xl mx-auto p-6 space-y-6">
       <DashboardHeader active="/calendar" />
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <div className="space-y-3">
         <h2 className="font-semibold flex items-center gap-1">
@@ -153,17 +153,17 @@ function CalendarContent() {
                 onClick={() => setSelectedDate(date)}
                 className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-1 border transition-colors ${
                   isSelected
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
+                    ? "border-sky-500 bg-sky-50 dark:bg-sky-950/30"
                     : isToday
-                    ? "border-emerald-300 dark:border-emerald-700"
+                    ? "border-sky-300 dark:border-sky-700"
                     : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
-                <span className={isToday ? "font-semibold text-emerald-700 dark:text-emerald-400" : ""}>{day}</span>
+                <span className={isToday ? "font-semibold text-sky-700 dark:text-sky-400" : ""}>{day}</span>
                 {status && (
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      status === "overdue" ? "bg-red-600" : status === "due" ? "bg-amber-500" : "bg-emerald-500"
+                      status === "overdue" ? "bg-amber-500" : status === "due" ? "bg-sky-500" : "bg-green-600"
                     }`}
                   />
                 )}
@@ -174,13 +174,13 @@ function CalendarContent() {
 
         <div className="flex items-center gap-4 text-xs text-slate-400">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-red-600" /> Overdue
+            <span className="w-2 h-2 rounded-full bg-amber-500" /> Overdue
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" /> Due
+            <span className="w-2 h-2 rounded-full bg-sky-500" /> Due
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Paid
+            <span className="w-2 h-2 rounded-full bg-green-600" /> Paid
           </span>
         </div>
       </div>
@@ -201,12 +201,12 @@ function CalendarContent() {
                     <div className="font-medium">
                       {e.name}
                       {e.is_overdue && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-white bg-red-600 rounded-full px-1.5 py-0.5">
+                        <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-full px-1.5 py-0.5">⚠ 
                           Overdue
                         </span>
                       )}
                       {e.is_paid && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full px-1.5 py-0.5">
+                        <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-sky-700 bg-sky-100 dark:bg-sky-950/40 dark:text-sky-400 rounded-full px-1.5 py-0.5">
                           Paid
                         </span>
                       )}
@@ -214,10 +214,10 @@ function CalendarContent() {
                     <div className="text-xs text-slate-400">{e.category}</div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={e.is_paid ? "text-slate-400" : "text-red-600 font-medium"}>{fmt(e.amount)}</span>
+                    <span className={e.is_paid ? "text-green-700" : "text-slate-800 font-medium"}>{fmt(e.amount)}</span>
                     <Link
                       href={`/period/${e.period_id}`}
-                      className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline"
+                      className="text-xs text-sky-700 dark:text-sky-400 hover:underline"
                     >
                       View cycle →
                     </Link>

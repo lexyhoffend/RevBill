@@ -35,12 +35,22 @@ function addDaysIso(iso: string, days: number) {
 
 const CADENCE_LABELS: Record<CadenceType, string> = {
   monthly_date: "Custom date of month",
+  semimonthly: "Twice a month",
   weekly: "Weekly",
   biweekly: "Bi-weekly",
 };
 
+function usesDayOfMonth(c: CadenceType): boolean {
+  return c === "monthly_date" || c === "semimonthly";
+}
+
 function describeCadence(s: IncomeSource): string {
   if (s.cadence_type === "monthly_date") return `Monthly on the ${s.cadence_day_of_month}${ordinal(s.cadence_day_of_month || 0)}`;
+  if (s.cadence_type === "semimonthly") {
+    const d1 = s.cadence_day_of_month || 1;
+    const d2 = s.cadence_day_of_month2 || 31;
+    return `Twice a month on the ${d1}${ordinal(d1)} and ${d2 >= 31 ? "last day" : `${d2}${ordinal(d2)}`}`;
+  }
   const day = WEEKDAY_LABELS[s.cadence_weekday ?? 0];
   return s.cadence_type === "weekly" ? `Weekly on ${day}` : `Every 2 weeks on ${day}`;
 }
@@ -66,6 +76,7 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
   const [amount, setAmount] = useState(String(source.amount));
   const [cadenceType, setCadenceType] = useState<CadenceType>(source.cadence_type);
   const [dayOfMonth, setDayOfMonth] = useState(String(source.cadence_day_of_month ?? 1));
+  const [dayOfMonth2, setDayOfMonth2] = useState(String(source.cadence_day_of_month2 ?? 31));
   const [startDate, setStartDate] = useState(source.start_date);
 
   async function save() {
@@ -73,10 +84,11 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
       name,
       amount: Number(amount) || 0,
       cadence_type: cadenceType,
-      cadence_day_of_month: cadenceType === "monthly_date" ? Number(dayOfMonth) : null,
+      cadence_day_of_month: usesDayOfMonth(cadenceType) ? Number(dayOfMonth) : null,
+      cadence_day_of_month2: cadenceType === "semimonthly" ? Number(dayOfMonth2) : null,
       // Derived from start_date, not a separately-editable field -- keeps the two
       // from ever drifting out of sync (which used to silently break matching).
-      cadence_weekday: cadenceType === "monthly_date" ? null : weekdayFromIsoDate(startDate),
+      cadence_weekday: usesDayOfMonth(cadenceType) ? null : weekdayFromIsoDate(startDate),
       start_date: startDate,
     });
     setEditing(false);
@@ -97,7 +109,7 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
 
   if (editing) {
     return (
-      <div className="space-y-2 py-2 border-b border-emerald-100 dark:border-emerald-900/40">
+      <div className="space-y-2 py-2 border-b border-sky-100 dark:border-sky-900/40">
         <div className="flex gap-2 items-center">
           <input
             value={name}
@@ -123,7 +135,7 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
           </select>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
-          {cadenceType === "monthly_date" && (
+          {usesDayOfMonth(cadenceType) && (
             <label className="flex items-center gap-2 text-xs">
               Day of month
               <input
@@ -132,6 +144,20 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
                 type="number"
                 min={1}
                 max={31}
+                className="w-16 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-transparent"
+              />
+            </label>
+          )}
+          {cadenceType === "semimonthly" && (
+            <label className="flex items-center gap-2 text-xs">
+              and
+              <input
+                value={dayOfMonth2}
+                onChange={(e) => setDayOfMonth2(e.target.value)}
+                type="number"
+                min={1}
+                max={31}
+                aria-label="Second pay day"
                 className="w-16 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-transparent"
               />
             </label>
@@ -145,10 +171,10 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
               className="border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-transparent"
             />
           </label>
-          {cadenceType !== "monthly_date" && (
+          {!usesDayOfMonth(cadenceType) && (
             <span className="text-xs text-slate-400">({WEEKDAY_LABELS[weekdayFromIsoDate(startDate)]})</span>
           )}
-          <button onClick={save} className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+          <button onClick={save} className="text-xs text-sky-700 dark:text-sky-400 font-medium">
             Save
           </button>
           <button onClick={() => setEditing(false)} className="text-xs text-slate-400">
@@ -160,19 +186,19 @@ function IncomeSourceRow({ source, onChanged }: { source: IncomeSource; onChange
   }
 
   return (
-    <div className="flex justify-between items-center py-2 border-b border-emerald-100 dark:border-emerald-900/40">
+    <div className="flex justify-between items-center py-2 border-b border-sky-100 dark:border-sky-900/40">
       <div>
         <div className="text-sm font-medium">{source.name}</div>
         <div className="text-xs text-slate-400">{describeCadence(source)}</div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+        <span className="text-sky-700 dark:text-sky-400 font-medium">
           +${source.amount.toLocaleString()}
         </span>
         <button onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:underline">
           Edit
         </button>
-        <button onClick={remove} className="text-xs text-red-500 hover:underline">
+        <button onClick={remove} className="text-xs text-amber-700 hover:underline">
           Delete
         </button>
       </div>
@@ -217,11 +243,11 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
 
   if (source.shared_access_bill_id != null) {
     return (
-      <div className="flex justify-between items-center py-2 border-b border-red-100 dark:border-red-900/30">
+      <div className="flex justify-between items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
         <div>
           <div className="text-sm font-medium flex items-center gap-2">
             {source.name}
-            <span className="text-[10px] uppercase tracking-wide text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full px-1.5 py-0.5">
+            <span className="text-[10px] uppercase tracking-wide text-sky-700 bg-sky-100 dark:bg-sky-950/40 dark:text-sky-400 rounded-full px-1.5 py-0.5">
               Shared
             </span>
           </div>
@@ -229,7 +255,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
             {source.category} · auto-tracked from a split -- amount updates automatically
           </div>
         </div>
-        <span className="text-red-600 dark:text-red-400 font-medium">
+        <span className="text-amber-700 dark:text-amber-400 font-medium">
           -${source.default_target_amount.toLocaleString()}
         </span>
       </div>
@@ -238,7 +264,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
 
   if (editing) {
     return (
-      <div className="flex gap-2 items-center py-2 border-b border-red-100 dark:border-red-900/30">
+      <div className="flex gap-2 items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -284,7 +310,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
             ))}
           </select>
         )}
-        <button onClick={save} className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+        <button onClick={save} className="text-xs text-sky-700 dark:text-sky-400 font-medium">
           Save
         </button>
         <button onClick={() => setEditing(false)} className="text-xs text-slate-400">
@@ -295,7 +321,7 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
   }
 
   return (
-    <div className="flex justify-between items-center py-2 border-b border-red-100 dark:border-red-900/30">
+    <div className="flex justify-between items-center py-2 border-b border-amber-100 dark:border-amber-900/30">
       <div>
         <div className="text-sm font-medium">
           {source.name}
@@ -309,13 +335,13 @@ function BillSourceRow({ source, onChanged }: { source: BillSource; onChanged: (
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-red-600 dark:text-red-400 font-medium">
+        <span className="text-amber-700 dark:text-amber-400 font-medium">
           -${source.default_target_amount.toLocaleString()}
         </span>
         <button onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:underline">
           Edit
         </button>
-        <button onClick={remove} className="text-xs text-red-500 hover:underline">
+        <button onClick={remove} className="text-xs text-amber-700 hover:underline">
           Delete
         </button>
       </div>
@@ -334,6 +360,7 @@ export default function SourcesPage() {
   const [cycleName, setCycleName] = useState("");
   const [cadenceType, setCadenceType] = useState<CadenceType>("biweekly");
   const [dayOfMonth, setDayOfMonth] = useState("1");
+  const [dayOfMonth2, setDayOfMonth2] = useState("31");
   const [startDate, setStartDate] = useState(todayIso());
   const [cycleAmount, setCycleAmount] = useState("");
 
@@ -360,8 +387,9 @@ export default function SourcesPage() {
     await createIncomeSource({
       name: cycleName,
       cadence_type: cadenceType,
-      cadence_day_of_month: cadenceType === "monthly_date" ? Number(dayOfMonth) : null,
-      cadence_weekday: cadenceType !== "monthly_date" ? weekdayFromIsoDate(startDate) : null,
+      cadence_day_of_month: usesDayOfMonth(cadenceType) ? Number(dayOfMonth) : null,
+      cadence_day_of_month2: cadenceType === "semimonthly" ? Number(dayOfMonth2) : null,
+      cadence_weekday: !usesDayOfMonth(cadenceType) ? weekdayFromIsoDate(startDate) : null,
       start_date: startDate,
       amount: Number(cycleAmount) || 0,
     });
@@ -440,25 +468,25 @@ export default function SourcesPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold">
-              Set up Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+              Set up Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
             </h1>
             <p className="text-sm text-slate-400 mt-1">Add your payment cycles (income) and bills below.</p>
-            <Link href="/setup-cycle" className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+            <Link href="/setup-cycle" className="text-xs text-sky-700 dark:text-sky-400 hover:underline">
               Change cycle schedule
             </Link>
           </div>
           <button
             onClick={handleDone}
             disabled={finishing}
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+            className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
           >
             {finishing ? "Loading…" : "Done — View my Payments & Bills"}
           </button>
         </div>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-emerald-700 dark:text-emerald-400">Payment Cycles</h2>
+        <h2 className="font-semibold text-sky-700 dark:text-sky-400">Payment Cycles</h2>
         <p className="text-xs text-slate-400">
           One per job or income source (e.g. "Employer" vs "Rent Received") — each with its own schedule.
         </p>
@@ -468,7 +496,7 @@ export default function SourcesPage() {
           ))}
         </div>
 
-        <form onSubmit={handleAddCycle} className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 p-4 space-y-3 bg-emerald-50/40 dark:bg-emerald-950/20">
+        <form onSubmit={handleAddCycle} className="rounded-xl border border-sky-200 dark:border-sky-900/50 p-4 space-y-3 bg-sky-50/40 dark:bg-sky-950/20">
           <div className="flex gap-2">
             <input
               value={cycleName}
@@ -490,7 +518,7 @@ export default function SourcesPage() {
           </div>
 
           <div className="flex gap-2 items-center flex-wrap">
-            {cadenceType === "monthly_date" && (
+            {usesDayOfMonth(cadenceType) && (
               <label className="flex items-center gap-2 text-sm">
                 Day of month
                 <input
@@ -503,6 +531,20 @@ export default function SourcesPage() {
                 />
               </label>
             )}
+          {cadenceType === "semimonthly" && (
+            <label className="flex items-center gap-2 text-sm">
+              and
+              <input
+                value={dayOfMonth2}
+                onChange={(e) => setDayOfMonth2(e.target.value)}
+                type="number"
+                min={1}
+                max={31}
+                aria-label="Second pay day"
+                className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
+              />
+            </label>
+          )}
             <label className="flex items-center gap-2 text-sm">
               Start date
               <input
@@ -512,7 +554,7 @@ export default function SourcesPage() {
                 className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
               />
             </label>
-            {cadenceType !== "monthly_date" && (
+            {!usesDayOfMonth(cadenceType) && (
               <span className="text-xs text-slate-400">({WEEKDAY_LABELS[weekdayFromIsoDate(startDate)]})</span>
             )}
             <input
@@ -522,7 +564,7 @@ export default function SourcesPage() {
               placeholder="Amount received $"
               className="w-40 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
             />
-            <button type="submit" className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
               Add Payment Cycle
             </button>
           </div>
@@ -542,7 +584,7 @@ export default function SourcesPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-red-600 dark:text-red-400">Bills</h2>
+        <h2 className="font-semibold text-amber-700 dark:text-amber-400">Bills</h2>
         <p className="text-xs text-slate-400">
           Mark a bill "revolving" (credit cards) if you sometimes pay less than the full amount. Due day is
           optional -- set it (1–31) to get accurate due-date and overdue reminders on your dashboard,
@@ -554,8 +596,8 @@ export default function SourcesPage() {
           ))}
         </div>
 
-        <form onSubmit={handleAddBill} className="rounded-xl border border-red-200 dark:border-red-900/40 p-4 space-y-3 bg-red-50/30 dark:bg-red-950/10">
-          {billFormError && <p className="text-red-600 dark:text-red-400 text-sm">{billFormError}</p>}
+        <form onSubmit={handleAddBill} className="rounded-xl border border-amber-200 dark:border-amber-900/40 p-4 space-y-3 bg-amber-50/30 dark:bg-amber-950/10">
+          {billFormError && <p className="text-amber-700 dark:text-amber-400 text-sm">{billFormError}</p>}
           <div className="flex gap-2 flex-wrap items-center">
             <select
               value={billCategory}
@@ -581,7 +623,7 @@ export default function SourcesPage() {
                 required
                 className={`flex-1 min-w-40 w-40 border rounded-lg px-3 py-2 bg-transparent text-sm ${
                   billFormError
-                    ? "border-red-400 dark:border-red-600"
+                    ? "border-amber-400 dark:border-amber-600"
                     : "border-slate-300 dark:border-slate-600"
                 }`}
               />
@@ -620,7 +662,7 @@ export default function SourcesPage() {
               <input type="checkbox" checked={billRevolving} onChange={(e) => setBillRevolving(e.target.checked)} />
               Revolving
             </label>
-            <button type="submit" className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">
               Add Bill
             </button>
           </div>

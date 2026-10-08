@@ -103,7 +103,7 @@ export default function BillMonthCalendar({ initialDate }: { initialDate?: strin
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-      {error && <p className="text-red-600 text-xs">{error}</p>}
+      {error && <p className="text-amber-700 text-xs">{error}</p>}
 
       <div className="flex items-center justify-between">
         <button
@@ -149,17 +149,17 @@ export default function BillMonthCalendar({ initialDate }: { initialDate?: strin
               onClick={() => setSelectedDate(date)}
               className={`aspect-square rounded-lg text-xs flex flex-col items-center justify-center gap-0.5 border transition-colors ${
                 isSelected
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
+                  ? "border-sky-500 bg-sky-50 dark:bg-sky-950/30"
                   : isToday
-                  ? "border-emerald-300 dark:border-emerald-700"
+                  ? "border-sky-300 dark:border-sky-700"
                   : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
-              <span className={isToday ? "font-semibold text-emerald-700 dark:text-emerald-400" : ""}>{day}</span>
+              <span className={isToday ? "font-semibold text-sky-700 dark:text-sky-400" : ""}>{day}</span>
               {status && (
                 <span
                   className={`w-1 h-1 rounded-full ${
-                    status === "overdue" ? "bg-red-600" : status === "due" ? "bg-amber-500" : "bg-emerald-500"
+                    status === "overdue" ? "bg-amber-500" : status === "due" ? "bg-sky-500" : "bg-green-600"
                   }`}
                 />
               )}
@@ -170,13 +170,13 @@ export default function BillMonthCalendar({ initialDate }: { initialDate?: strin
 
       <div className="flex items-center gap-3 text-[10px] text-slate-400">
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-600" /> Overdue
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Overdue
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Due
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-500" /> Due
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Paid
+          <span className="w-1.5 h-1.5 rounded-full bg-green-600" /> Paid
         </span>
       </div>
 
@@ -192,12 +192,12 @@ export default function BillMonthCalendar({ initialDate }: { initialDate?: strin
                 <div className="flex items-center gap-2 shrink-0">
                   <span
                     className={
-                      e.is_paid ? "text-slate-400" : e.is_overdue ? "text-red-600 font-medium" : "text-amber-600"
+                      e.is_paid ? "text-green-700" : e.is_overdue ? "text-amber-800 font-medium" : "text-slate-700"
                     }
                   >
                     {fmt(e.amount)}
                   </span>
-                  <Link href={`/period/${e.period_id}`} className="text-emerald-700 dark:text-emerald-400 hover:underline">
+                  <Link href={`/period/${e.period_id}`} className="text-sky-700 dark:text-sky-400 hover:underline">
                     →
                   </Link>
                 </div>

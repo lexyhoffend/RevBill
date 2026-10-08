@@ -10,7 +10,7 @@ export default function RequirePayCycle({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (state.status === "authed" && state.user.pay_cycle_mode === null) {
-      router.replace("/setup-cycle");
+      router.replace("/welcome");
     }
   }, [state, router]);
 

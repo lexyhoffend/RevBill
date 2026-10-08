@@ -61,11 +61,11 @@ function SourceCheckboxes({
               type="checkbox"
               checked={selectedBillIds.has(b.id)}
               onChange={() => onToggleBill(b.id)}
-              className="w-4 h-4 accent-emerald-600"
+              className="w-4 h-4 accent-sky-700"
             />
             <BillCategoryIcon category={b.category} className="w-4 h-4 shrink-0" />
             {b.name}
-            {b.split_shared && <span className="text-xs text-emerald-600 dark:text-emerald-400">(splits evenly)</span>}
+            {b.split_shared && <span className="text-xs text-sky-700 dark:text-sky-400">(splits evenly)</span>}
           </label>
         ))}
       </div>
@@ -78,7 +78,7 @@ function SourceCheckboxes({
               type="checkbox"
               checked={selectedIncomeIds.has(s.id)}
               onChange={() => onToggleIncome(s.id)}
-              className="w-4 h-4 accent-emerald-600"
+              className="w-4 h-4 accent-sky-700"
             />
             {s.name}
           </label>
@@ -137,7 +137,7 @@ function EditRelationship({
   }
 
   return (
-    <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 p-4 space-y-3">
+    <div className="rounded-xl border border-sky-300 dark:border-sky-700 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-sm text-slate-400">Editing relationship with</span>
         <span className="text-sm font-medium">{personLabel(null, shared.viewer_name, shared.viewer_email)}</span>
@@ -160,7 +160,7 @@ function EditRelationship({
         <button
           onClick={save}
           disabled={saving}
-          className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+          className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -232,16 +232,16 @@ function AddRelationship({
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
+      <button onClick={() => setOpen(true)} className="text-sm text-sky-700 dark:text-sky-400 hover:underline">
         + Add person
       </button>
     );
   }
 
   return (
-    <form onSubmit={submit} className="rounded-xl border border-emerald-200 dark:border-emerald-800 p-4 space-y-3 bg-emerald-50/40 dark:bg-emerald-950/20">
-      <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Add a person</div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+    <form onSubmit={submit} className="rounded-xl border border-sky-200 dark:border-sky-800 p-4 space-y-3 bg-sky-50/40 dark:bg-sky-950/20">
+      <div className="text-sm font-medium text-sky-700 dark:text-sky-400">Add a person</div>
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
       <div className="flex gap-2 flex-wrap">
         <input
           value={email}
@@ -273,7 +273,7 @@ function AddRelationship({
         <button
           type="submit"
           disabled={saving}
-          className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+          className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {saving ? "Adding…" : "Add person"}
         </button>
@@ -319,7 +319,7 @@ function OutgoingShares() {
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       {shares.length === 0 && <p className="text-sm text-slate-400">You haven't shared with anyone yet.</p>}
 
@@ -346,10 +346,10 @@ function OutgoingShares() {
                 )}
               </div>
               <div className="flex gap-3 text-sm shrink-0">
-                <button onClick={() => setEditingId(shared.id)} className="text-emerald-700 dark:text-emerald-400 hover:underline">
+                <button onClick={() => setEditingId(shared.id)} className="text-sky-700 dark:text-sky-400 hover:underline">
                   Edit
                 </button>
-                <button onClick={() => remove(shared)} className="text-red-500 hover:underline">
+                <button onClick={() => remove(shared)} className="text-amber-700 hover:underline">
                   Remove
                 </button>
               </div>
@@ -362,13 +362,13 @@ function OutgoingShares() {
                 >
                   <BillCategoryIcon category={b.category ?? "Other"} className="w-3 h-3" />
                   {b.name}
-                  {b.split_shared && <span className="text-emerald-600 dark:text-emerald-400">· split</span>}
+                  {b.split_shared && <span className="text-sky-700 dark:text-sky-400">· split</span>}
                 </span>
               ))}
               {shared.income.map((s) => (
                 <span
                   key={`income-${s.id}`}
-                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                  className="text-xs px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400"
                 >
                   {s.name}
                 </span>
@@ -394,7 +394,7 @@ function IncomingShares() {
     listSharedWithMe().then(setShares).catch((e) => setError(String(e)));
   }, []);
 
-  if (error) return <p className="text-red-600 text-sm">{error}</p>;
+  if (error) return <p className="text-amber-700 text-sm">{error}</p>;
 
   if (shares.length === 0) {
     return <p className="text-sm text-slate-400">No one has shared anything with you yet.</p>;
@@ -421,7 +421,7 @@ function IncomingShares() {
               {shared.income.map((inc) => (
                 <div key={`income-${inc.income_source_id}`} className="flex justify-between items-center py-1.5 text-sm">
                   <span>{inc.name}</span>
-                  <span className={inc.is_received ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400"}>
+                  <span className={inc.is_received ? "text-sky-700 dark:text-sky-400" : "text-slate-400"}>
                     {inc.is_received ? "+" : ""}
                     {fmt(inc.actual_amount)}
                   </span>
@@ -436,17 +436,17 @@ function IncomingShares() {
                         <BillCategoryIcon category={b.category} className="w-4 h-4 shrink-0" />
                         {b.name}
                         {b.is_overdue && (
-                          <span className="text-[10px] uppercase tracking-wide font-semibold text-white bg-red-600 rounded-full px-1.5 py-0.5">
+                          <span className="text-[10px] uppercase tracking-wide font-semibold text-white bg-amber-600 rounded-full px-1.5 py-0.5">
                             Overdue
                           </span>
                         )}
                         {b.is_paid && (
-                          <span className="text-[10px] uppercase tracking-wide font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full px-1.5 py-0.5">
+                          <span className="text-[10px] uppercase tracking-wide font-semibold text-sky-700 bg-sky-100 dark:bg-sky-950/40 dark:text-sky-400 rounded-full px-1.5 py-0.5">
                             Paid
                           </span>
                         )}
                       </span>
-                      <span className={b.is_paid ? "text-slate-400" : "text-red-600 dark:text-red-400 font-medium"}>
+                      <span className={b.is_paid ? "text-slate-400" : "text-amber-700 dark:text-amber-400 font-medium"}>
                         {fmt(isSplit ? b.split_amount : b.target_amount)}
                       </span>
                     </div>
@@ -493,7 +493,7 @@ function AddPersonToSplit({ billId, onAdded }: { billId: number; onAdded: () => 
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+      <button onClick={() => setOpen(true)} className="text-xs text-sky-700 dark:text-sky-400 hover:underline">
         + Add person to split with
       </button>
     );
@@ -501,7 +501,7 @@ function AddPersonToSplit({ billId, onAdded }: { billId: number; onAdded: () => 
 
   return (
     <form onSubmit={submit} className="flex gap-2 items-center flex-wrap pt-1">
-      {error && <p className="text-red-600 text-xs w-full">{error}</p>}
+      {error && <p className="text-amber-700 text-xs w-full">{error}</p>}
       <input
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -519,7 +519,7 @@ function AddPersonToSplit({ billId, onAdded }: { billId: number; onAdded: () => 
       <button
         type="submit"
         disabled={saving}
-        className="px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-60"
+        className="px-2 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-medium disabled:opacity-60"
       >
         {saving ? "Adding…" : "Add"}
       </button>
@@ -555,25 +555,25 @@ function SplitBillRow({ bill, onChanged }: { bill: SplitBill; onChanged: () => v
           <BillCategoryIcon category={bill.category} className="w-4 h-4 shrink-0" />
           <span className="font-medium">{bill.name}</span>
         </div>
-        <button onClick={stopSplitting} className="text-xs text-red-500 hover:underline shrink-0">
+        <button onClick={stopSplitting} className="text-xs text-amber-700 hover:underline shrink-0">
           Stop splitting
         </button>
       </div>
       <div className="text-sm">
         {fmt(bill.target_amount)} ÷ {bill.split_count} ={" "}
-        <span className="font-medium text-emerald-700 dark:text-emerald-400">{fmt(bill.split_amount)}</span> each
+        <span className="font-medium text-sky-700 dark:text-sky-400">{fmt(bill.split_amount)}</span> each
       </div>
       <div className="flex flex-wrap gap-1.5">
         <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">You</span>
         {bill.partners.map((p) => (
           <span
             key={p.shared_access_id}
-            className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+            className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400"
           >
             {personLabel(p.label, p.viewer_name, p.viewer_email)}
             <button
               onClick={() => removePartner(p)}
-              className="text-emerald-700 dark:text-emerald-400 hover:text-red-500"
+              className="text-sky-700 dark:text-sky-400 hover:text-amber-700"
               aria-label={`Remove ${p.viewer_email}`}
             >
               ×
@@ -598,7 +598,7 @@ function SplitWithMe() {
     s.bills.filter((b) => b.split_shared && b.split_count > 1).map((b) => ({ share: s, bill: b }))
   );
 
-  if (error) return <p className="text-red-600 text-sm">{error}</p>;
+  if (error) return <p className="text-amber-700 text-sm">{error}</p>;
   if (rows.length === 0) return null;
 
   return (
@@ -620,7 +620,7 @@ function SplitWithMe() {
           </div>
           <div className="text-sm">
             {fmt(bill.target_amount)} ÷ {bill.split_count} ={" "}
-            <span className="font-medium text-emerald-700 dark:text-emerald-400">{fmt(bill.split_amount)}</span>{" "}
+            <span className="font-medium text-sky-700 dark:text-sky-400">{fmt(bill.split_amount)}</span>{" "}
             your share
           </div>
         </div>
@@ -660,7 +660,7 @@ function SplitBills() {
 
       <div className="space-y-3">
         <h3 className="text-xs uppercase tracking-wide font-semibold text-slate-400">Bills I split</h3>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-amber-700 text-sm">{error}</p>}
 
         {splitBills.length === 0 && (
           <p className="text-sm text-slate-400">You haven't split any of your own bills yet.</p>
@@ -687,7 +687,7 @@ function SplitBills() {
             <button
               onClick={startSplitting}
               disabled={!addBillId}
-              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+              className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
             >
               Start splitting
             </button>
@@ -725,19 +725,19 @@ function SharingContent() {
       <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 text-sm overflow-hidden w-fit flex-wrap">
         <button
           onClick={() => setTab("outgoing")}
-          className={`px-4 py-1.5 ${tab === "outgoing" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+          className={`px-4 py-1.5 ${tab === "outgoing" ? "bg-sky-700 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
         >
           People I've shared with
         </button>
         <button
           onClick={() => setTab("incoming")}
-          className={`px-4 py-1.5 ${tab === "incoming" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+          className={`px-4 py-1.5 ${tab === "incoming" ? "bg-sky-700 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
         >
           Shared with me
         </button>
         <button
           onClick={() => setTab("split")}
-          className={`px-4 py-1.5 ${tab === "split" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+          className={`px-4 py-1.5 ${tab === "split" ? "bg-sky-700 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
         >
           Split bills
         </button>

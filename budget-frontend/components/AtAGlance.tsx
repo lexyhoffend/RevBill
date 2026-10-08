@@ -73,7 +73,7 @@ function PeriodTabs({
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
-          className={`px-3 py-1 ${value === t.key ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+          className={`px-3 py-1 ${value === t.key ? "bg-sky-700 text-white" : "text-slate-500 hover:bg-slate-50"}`}
         >
           {t.label}
         </button>
@@ -145,7 +145,7 @@ export default function AtAGlance() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  if (error) return <p className="text-red-600 text-sm">{error}</p>;
+  if (error) return <p className="text-amber-700 text-sm">{error}</p>;
   if (!summary) return <p className="text-sm text-slate-400">Loading your at-a-glance summary…</p>;
 
   const {
@@ -194,12 +194,12 @@ export default function AtAGlance() {
   return (
     <section className="space-y-4">
       {paidOffNames.length > 0 && (
-        <div className="relative rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900 p-4 flex items-center justify-between gap-3">
+        <div className="relative rounded-xl border border-orange-200 bg-orange-50 p-4 flex items-center justify-between gap-3">
           <Confetti burstKey={burstKey} count={24} />
-          <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+          <div className="text-sm font-medium text-orange-900">
             🎉 Paid off! {paidOffNames.join(", ")} {paidOffNames.length === 1 ? "is" : "are"} down to $0.
           </div>
-          <button onClick={() => setPaidOffNames([])} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline shrink-0">
+          <button onClick={() => setPaidOffNames([])} className="text-xs text-sky-700 dark:text-sky-400 hover:underline shrink-0">
             Dismiss
           </button>
         </div>
@@ -213,7 +213,7 @@ export default function AtAGlance() {
             Owed on cards
             <InfoTooltip text="Total remaining balance across all your revolving (credit card) bills, as of the current cycle. Doesn't include regular bills like rent or utilities." />
           </div>
-          <div className="text-xl font-semibold text-red-600">{fmt(total_owed)}</div>
+          <div className="text-xl font-semibold text-amber-700">{fmt(total_owed)}</div>
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4">
@@ -221,7 +221,7 @@ export default function AtAGlance() {
             {current_period_label ? "Left this cycle" : "Left"}
             <InfoTooltip text="Income received minus bills paid and money moved to savings, for your current pay cycle. Updates as you mark things paid or received." />
           </div>
-          <div className={`text-xl font-semibold ${current_left_over < 0 ? "text-red-600" : "text-emerald-700"}`}>
+          <div className={`text-xl font-semibold ${current_left_over < 0 ? "text-amber-700" : "text-sky-700"}`}>
             {fmt(current_left_over)}
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function AtAGlance() {
             Total saved
             <InfoTooltip text="Combined balance across every savings bucket you've set up, regardless of which one has a goal." />
           </div>
-          <div className="text-xl font-semibold text-emerald-700">{fmt(total_saved_all_buckets)}</div>
+          <div className="text-xl font-semibold text-sky-700">{fmt(total_saved_all_buckets)}</div>
           {savingsPct !== null && <div className="text-xs text-slate-400">{savingsPct}% of goals</div>}
         </div>
       </div>
@@ -326,7 +326,7 @@ export default function AtAGlance() {
                     {c.name}
                     {c.issuer && <span className="text-slate-400"> · {c.issuer}</span>}
                   </span>
-                  <span className={c.owed_balance > 0 ? "text-red-600 font-medium" : "text-slate-400"}>
+                  <span className={c.owed_balance > 0 ? "text-amber-700 font-medium" : "text-slate-400"}>
                     {fmt(c.owed_balance)}
                   </span>
                 </div>
@@ -340,12 +340,12 @@ export default function AtAGlance() {
       )}
 
       {bills_due_soon.length > 0 && (
-        <div className="rounded-xl border border-red-200 bg-red-50/30 p-4 space-y-2">
-          <div className="text-sm font-medium text-red-600 flex items-center gap-1">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+          <div className="text-sm font-medium text-slate-800 flex items-center gap-1">
             Bills due soon
             <InfoTooltip text="Due dates use each bill's own 'due day' if you've set one (Setup > Bills); otherwise the cycle's own pay date. Overdue means the due date has passed with no payment recorded and it isn't marked paid." />
           </div>
-          <div className="divide-y divide-red-100">
+          <div className="divide-y divide-slate-100">
             {bills_due_soon.map((b) => (
               <div key={`${b.bill_source_id}-${b.due_date}`} className="flex justify-between items-baseline py-1.5 text-sm">
                 <div className="flex items-start gap-1.5">
@@ -353,19 +353,19 @@ export default function AtAGlance() {
                   <div>
                     <span className="font-medium">{b.name}</span>
                     {b.is_overdue && (
-                      <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-white bg-red-600 rounded-full px-1.5 py-0.5">
+                      <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-full px-1.5 py-0.5">⚠ 
                         Overdue
                       </span>
                     )}
                     <span className="text-slate-400"> · due {b.is_overdue ? "" : "by "}{b.due_date}</span>
                   </div>
                 </div>
-                <span className="text-red-600 font-medium">{fmt(b.amount_due)}</span>
+                <span className="text-slate-800 font-medium">{fmt(b.amount_due)}</span>
               </div>
             ))}
           </div>
           {current_period_id && (
-            <Link href={`/period/${current_period_id}`} className="text-xs text-emerald-700 hover:underline">
+            <Link href={`/period/${current_period_id}`} className="text-xs text-sky-700 hover:underline">
               View current cycle →
             </Link>
           )}

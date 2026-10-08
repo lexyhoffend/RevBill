@@ -95,23 +95,23 @@ export default function SavingsBucketCard({ bucket, onChanged }: { bucket: Savin
   }, [pct]);
 
   return (
-    <div className="relative rounded-xl border border-emerald-200 p-4 space-y-2">
+    <div className="relative rounded-xl border border-sky-200 p-4 space-y-2">
       <Confetti burstKey={burstKey} />
       {justReachedGoal && (
-        <span className="absolute -top-2 right-3 text-[10px] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">
+        <span className="absolute -top-2 right-3 text-[10px] font-semibold text-sky-700 bg-sky-50 rounded-full px-2 py-0.5">
           Goal reached! 🎉
         </span>
       )}
       <div className="flex justify-between items-baseline">
         <span className="font-medium">{bucket.name}</span>
-        <span className="text-emerald-700 font-semibold">{fmt(bucket.total_saved)}</span>
+        <span className="text-sky-700 font-semibold">{fmt(bucket.total_saved)}</span>
       </div>
 
       {bucket.goal_amount != null ? (
         <>
-          <div className="w-full h-2 rounded-full bg-emerald-100 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-sky-100 overflow-hidden">
             <div
-              className="h-full bg-emerald-600 rounded-full"
+              className="h-full bg-sky-700 rounded-full"
               style={{ width: `${Math.min(pct ?? 0, 100)}%` }}
             />
           </div>
@@ -126,7 +126,7 @@ export default function SavingsBucketCard({ bucket, onChanged }: { bucket: Savin
 
       <div className="flex gap-3 text-sm pt-1">
         {!addingFunds && (
-          <button onClick={() => setAddingFunds(true)} className="text-emerald-700 hover:underline">
+          <button onClick={() => setAddingFunds(true)} className="text-sky-700 hover:underline">
             + Add funds
           </button>
         )}
@@ -150,7 +150,7 @@ export default function SavingsBucketCard({ bucket, onChanged }: { bucket: Savin
             autoFocus
             className="w-32 border border-slate-300 rounded-lg px-3 py-2 bg-transparent text-sm"
           />
-          <button type="submit" className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+          <button type="submit" className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
             Add
           </button>
           <button type="button" onClick={() => setAddingFunds(false)} className="text-sm text-slate-400">
@@ -169,7 +169,7 @@ export default function SavingsBucketCard({ bucket, onChanged }: { bucket: Savin
             autoFocus
             className="w-56 border border-slate-300 rounded-lg px-3 py-2 bg-transparent text-sm"
           />
-          <button type="submit" className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+          <button type="submit" className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
             Save
           </button>
           <button type="button" onClick={() => setEditingGoal(false)} className="text-sm text-slate-400">
@@ -193,11 +193,11 @@ export default function SavingsBucketCard({ bucket, onChanged }: { bucket: Savin
                     <div className="text-xs text-slate-400">{fmtDate(e.created_at)}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={e.amount < 0 ? "text-red-600" : "text-emerald-700"}>
+                    <span className={e.amount < 0 ? "text-amber-700" : "text-sky-700"}>
                       {e.amount < 0 ? "-" : "+"}
                       {fmt(Math.abs(e.amount))}
                     </span>
-                    <button onClick={() => removeEntry(e)} className="text-xs text-red-500 hover:underline">
+                    <button onClick={() => removeEntry(e)} className="text-xs text-amber-700 hover:underline">
                       Delete
                     </button>
                   </div>

@@ -17,6 +17,7 @@ from app.legal import CURRENT_TERMS_VERSION
 from app.models import (
     BillEntry,
     BillSource,
+    Event,
     IncomeEntry,
     IncomeSource,
     PayPeriod,
@@ -28,7 +29,9 @@ from app.models import (
     User,
 )
 from app.schemas import DeleteAccountIn, LoginIn, PayCycleModeIn, ProfileUpdate, SignupIn, UserOut
+from app.services.events import log_event
 from app.services.period_service import (
+    PAYDAY_LAYOUT,
     detach_reimbursement_bills,
     ensure_upcoming_periods,
     reset_untouched_upcoming_periods,
@@ -80,8 +83,11 @@ def signup(payload: SignupIn, response: Response, db: Session = Depends(get_db))
         user_number=generate_unique_user_number(db),
         terms_accepted_at=datetime.datetime.utcnow(),
         terms_version=CURRENT_TERMS_VERSION,
+        cycle_layout=PAYDAY_LAYOUT,
     )
     db.add(user)
+    db.flush()
+    log_event(db, user.id, "account_created")
     db.commit()
     db.refresh(user)
 
@@ -180,6 +186,7 @@ def delete_account(
     db.query(SavingsBucket).filter_by(user_id=uid).delete(synchronize_session=False)
     db.query(BillSource).filter_by(user_id=uid).delete(synchronize_session=False)
     db.query(IncomeSource).filter_by(user_id=uid).delete(synchronize_session=False)
+    db.query(Event).filter_by(user_id=uid).delete(synchronize_session=False)
     db.query(User).filter_by(id=uid).delete(synchronize_session=False)
     db.commit()
 
@@ -199,14 +206,23 @@ def set_pay_cycle_mode(
         if payload.anchor_day is None or not (1 <= payload.anchor_day <= 31):
             raise HTTPException(status_code=400, detail="Monthly mode requires a day of month between 1 and 31")
         current_user.pay_cycle_anchor_day = payload.anchor_day
+        current_user.pay_cycle_anchor_day2 = None
+        current_user.pay_cycle_anchor_date = None
+    elif payload.mode == "semimonthly":
+        days = (payload.anchor_day, payload.anchor_day2)
+        if any(d is None or not (1 <= d <= 31) for d in days) or payload.anchor_day == payload.anchor_day2:
+            raise HTTPException(status_code=400, detail="Semimonthly mode requires two different pay days between 1 and 31")
+        current_user.pay_cycle_anchor_day, current_user.pay_cycle_anchor_day2 = sorted(days)
         current_user.pay_cycle_anchor_date = None
     elif payload.mode in ("weekly", "biweekly"):
         if payload.anchor_date is None:
             raise HTTPException(status_code=400, detail=f"{payload.mode.title()} mode requires a start date")
         current_user.pay_cycle_anchor_date = payload.anchor_date
         current_user.pay_cycle_anchor_day = None
+        current_user.pay_cycle_anchor_day2 = None
     else:
         current_user.pay_cycle_anchor_day = None
+        current_user.pay_cycle_anchor_day2 = None
         current_user.pay_cycle_anchor_date = None
 
     current_user.pay_cycle_mode = payload.mode

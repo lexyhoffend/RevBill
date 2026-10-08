@@ -40,7 +40,7 @@ export default function MonthlyRecap({ summary }: { summary: DashboardSummary })
   }
 
   return (
-    <div className="relative rounded-xl border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 space-y-3">
+    <div className="relative rounded-xl border-2 border-sky-300 dark:border-sky-700 bg-sky-50/40 dark:bg-sky-950/20 p-4 space-y-3">
       <button
         onClick={dismiss}
         aria-label="Dismiss"
@@ -48,7 +48,7 @@ export default function MonthlyRecap({ summary }: { summary: DashboardSummary })
       >
         ✕
       </button>
-      <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Your {monthLabel()} recap</div>
+      <div className="text-sm font-semibold text-sky-700 dark:text-sky-400">Your {monthLabel()} recap</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
         <div>
           <div className="text-xs text-slate-400">Paid this month</div>
@@ -65,7 +65,7 @@ export default function MonthlyRecap({ summary }: { summary: DashboardSummary })
         )}
         <div>
           <div className="text-xs text-slate-400">Total saved</div>
-          <div className="font-semibold text-emerald-700 dark:text-emerald-400">
+          <div className="font-semibold text-sky-700 dark:text-sky-400">
             {fmt(summary.total_saved_all_buckets)}
           </div>
         </div>

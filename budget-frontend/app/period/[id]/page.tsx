@@ -55,7 +55,7 @@ export default function PeriodPage() {
     <RequireAuth>
       <RequirePayCycle>
       {error ? (
-        <main className="max-w-2xl mx-auto p-6 text-red-600 text-sm">{error}</main>
+        <main className="max-w-2xl mx-auto p-6 text-amber-700 text-sm">{error}</main>
       ) : !period ? (
         <main className="max-w-2xl mx-auto p-6">Loading…</main>
       ) : (
@@ -102,7 +102,7 @@ export default function PeriodPage() {
               <OweBalancesPanel billEntries={period.bill_entries} />
 
               <section className="space-y-2">
-                <h2 className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                <h2 className="font-semibold text-sky-700 dark:text-sky-400 flex items-center gap-1">
                   Income
                   <InfoTooltip text="Check a source off once you've been paid -- it auto-fills the expected amount, but you can still edit the number afterward without unchecking it." />
                 </h2>
@@ -137,7 +137,7 @@ export default function PeriodPage() {
               />
 
               <section>
-                <h2 className="font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+                <h2 className="font-semibold text-slate-800 mb-2 flex items-center gap-1">
                   Bills
                   <InfoTooltip text="The checkbox is yours to control -- checking it marks the bill paid and fills in the target amount, but editing the amount afterward won't uncheck it. 'Due'/'Overdue' shows this bill's own due date if you've set one in Setup." />
                 </h2>
@@ -160,7 +160,7 @@ export default function PeriodPage() {
             </div>
 
             <div className="order-1 lg:order-2 lg:sticky lg:top-6">
-              <BillMonthCalendar key={period.id} initialDate={period.end_date} />
+              <BillMonthCalendar key={period.id} initialDate={period.pay_date ?? period.end_date} />
             </div>
           </div>
         </main>

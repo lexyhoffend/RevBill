@@ -1,10 +1,10 @@
 "use client";
 
 const COLORS = [
-  "#059669", // emerald-600
+  "#059669", // sky-600
   "#2563eb", // blue-600
   "#d97706", // amber-600
-  "#dc2626", // red-600
+  "#dc2626", // amber-600
   "#7c3aed", // violet-600
   "#0891b2", // cyan-600
   "#db2777", // pink-600

@@ -24,7 +24,7 @@ export default function AddOneTimeIncome({ onAdd }: Props) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
+        className="text-sm text-sky-700 dark:text-sky-400 hover:underline"
       >
         + Add one-time income
       </button>
@@ -46,7 +46,7 @@ export default function AddOneTimeIncome({ onAdd }: Props) {
         placeholder="Amount $"
         className="w-32 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-transparent text-sm"
       />
-      <button type="submit" className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+      <button type="submit" className="px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
         Add
       </button>
       <button type="button" onClick={() => setOpen(false)} className="text-sm text-slate-400">

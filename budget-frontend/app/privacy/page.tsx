@@ -29,6 +29,11 @@ export default function PrivacyPage() {
                 amounts, categories, due days, payment status, credit card balances you track, and savings buckets.
               </li>
               <li>
+                <strong>Basic usage milestones:</strong> a handful of events such as when you created your account,
+                finished setup, and planned a paycheck (and whether it was within a few days of payday). These are kept
+                in RevBill&apos;s own database to help improve the app and are never shared or sold.
+              </li>
+              <li>
                 <strong>Sharing settings:</strong> the email addresses or account IDs of people you choose to share or
                 split bills with, and which items you shared.
               </li>
@@ -116,7 +121,7 @@ export default function PrivacyPage() {
           body: (
             <p>
               Questions or requests about your information:{" "}
-              <a href={`mailto:${LEGAL_CONTACT_EMAIL}`} className="text-emerald-700 dark:text-emerald-400 hover:underline">
+              <a href={`mailto:${LEGAL_CONTACT_EMAIL}`} className="text-sky-700 dark:text-sky-400 hover:underline">
                 {LEGAL_CONTACT_EMAIL}
               </a>
             </p>

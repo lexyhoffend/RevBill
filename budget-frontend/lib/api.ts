@@ -1,10 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
 
-export type CadenceType = "monthly_date" | "weekly" | "biweekly";
+export type CadenceType = "monthly_date" | "weekly" | "biweekly" | "semimonthly";
 
 // Account-level setting governing how Payment Cycles are created -- distinct from
 // CadenceType above, which is per-income-source.
-export type PayCycleMode = "monthly" | "biweekly" | "weekly" | "custom";
+export type PayCycleMode = "monthly" | "semimonthly" | "biweekly" | "weekly" | "custom";
 
 export const WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -75,6 +75,7 @@ export type IncomeSource = {
   name: string;
   cadence_type: CadenceType;
   cadence_day_of_month: number | null;
+  cadence_day_of_month2: number | null;
   cadence_weekday: number | null;
   start_date: string;
   amount: number;
@@ -99,6 +100,8 @@ export type PayPeriod = {
   label: string;
   start_date: string;
   end_date: string;
+  pay_date: string | null;
+  managed_at: string | null;
 };
 
 export type IncomeEntry = {
@@ -202,6 +205,7 @@ export type User = {
   pay_cycle_mode: PayCycleMode | null;
   pay_cycle_anchor_day: number | null;
   pay_cycle_anchor_date: string | null;
+  pay_cycle_anchor_day2: number | null;
   needs_terms: boolean;
 };
 
@@ -213,7 +217,12 @@ export const signup = (email: string, password: string, acceptedTerms: boolean) 
 export const acceptTerms = () => jsonFetch<User>("/auth/me/accept-terms", { method: "POST" });
 export const login = (email: string, password: string) =>
   jsonFetch<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-export const setPayCycleMode = (data: { mode: PayCycleMode; anchor_day?: number | null; anchor_date?: string | null }) =>
+export const setPayCycleMode = (data: {
+  mode: PayCycleMode;
+  anchor_day?: number | null;
+  anchor_day2?: number | null;
+  anchor_date?: string | null;
+}) =>
   jsonFetch<User>("/auth/me/pay-cycle", { method: "PATCH", body: JSON.stringify(data) });
 export const logout = () => jsonFetch("/auth/logout", { method: "POST" });
 export const deleteAccount = (password: string) =>
@@ -226,6 +235,7 @@ export type IncomeSourceCreate = {
   name: string;
   cadence_type: CadenceType;
   cadence_day_of_month?: number | null;
+  cadence_day_of_month2?: number | null;
   cadence_weekday?: number | null;
   start_date: string;
   amount: number;
@@ -451,3 +461,92 @@ export const addSplitPartner = (billSourceId: number, data: { viewer_email: stri
   jsonFetch<SplitBill>(`/sharing/split-bills/${billSourceId}/people`, { method: "POST", body: JSON.stringify(data) });
 export const removeSplitPartner = (billSourceId: number, sharedAccessId: number) =>
   jsonFetch<SplitBill>(`/sharing/split-bills/${billSourceId}/people/${sharedAccessId}`, { method: "DELETE" });
+
+// ── Manage My Pay Cycle ──────────────────────────────────────────
+
+export type PlanBill = {
+  entry_id: number;
+  period_id: number;
+  name: string;
+  category: string;
+  is_revolving: boolean;
+  due_date: string | null;
+  has_due_day: boolean;
+  amount_due: number;
+  carried_in: number;
+  carried_from: string | null;
+  planned: number;
+  deferred: number;
+  is_custom: boolean;
+  is_paid: boolean;
+  actual: number;
+  essential: boolean;
+};
+
+export type PlannerOption = {
+  kind: "move_bill" | "trim_fun" | "trim_future" | "due_date_script";
+  text: string;
+  amount?: number;
+  entry_id?: number;
+  script?: string;
+};
+
+export type Plan = {
+  plannable: true;
+  name: string | null;
+  period_id: number;
+  label: string;
+  pay_date: string;
+  next_pay_date: string;
+  is_current: boolean;
+  income: {
+    amount: number;
+    label: "Your estimate" | "This cycle" | "Your average";
+    is_received: boolean;
+    more_than_usual: number | null;
+    average: number | null;
+    income_entry_id: number | null;
+    income_entry_expected: number | null;
+  };
+  bills: PlanBill[];
+  bills_total: number;
+  future_amount: number;
+  future_set: boolean;
+  future_bucket: { id: number; name: string } | null;
+  fun_amount: number;
+  fun_set: boolean;
+  assigned: number;
+  still_to_plan: number;
+  over_planned: number;
+  managed_at: string | null;
+  can_confirm: boolean;
+  planner: { gap: number; message: string; options: PlannerOption[] } | null;
+  days_after_payday: number;
+};
+
+export type NotPlannable = { plannable: false; period_id: number | null; name?: string | null; label?: string };
+
+export const getCurrentPlan = () => jsonFetch<Plan | NotPlannable>("/plan/current");
+export const getPlan = (periodId: number) => jsonFetch<Plan | NotPlannable>(`/plan/${periodId}`);
+export const updatePlan = (
+  periodId: number,
+  data: { future_amount?: number | null; future_bucket_id?: number | null; fun_amount?: number | null }
+) =>
+  jsonFetch<Plan>(`/plan/${periodId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...data, fields: Object.keys(data) }),
+  });
+export const updateBillPlan = (periodId: number, entryId: number, data: { planned_amount: number | null; deferred_amount: number }) =>
+  jsonFetch<Plan>(`/plan/${periodId}/bills/${entryId}`, { method: "PATCH", body: JSON.stringify(data) });
+export const fillFun = (periodId: number) => jsonFetch<Plan>(`/plan/${periodId}/fill-fun`, { method: "POST" });
+export const confirmPlan = (periodId: number) => jsonFetch<Plan>(`/plan/${periodId}/confirm`, { method: "POST" });
+
+export type OnboardingData = {
+  take_home: number;
+  schedule: "weekly" | "biweekly" | "semimonthly" | "monthly";
+  next_payday: string;
+  second_pay_day?: number | null;
+  bills: { name: string; amount: number; due_day: number | null; category: string }[];
+};
+export const completeOnboarding = (data: OnboardingData) =>
+  jsonFetch<{ first_period_id: number | null }>("/onboarding", { method: "POST", body: JSON.stringify(data) });

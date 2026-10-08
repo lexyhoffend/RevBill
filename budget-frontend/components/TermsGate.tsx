@@ -29,7 +29,7 @@ export default function TermsGate() {
   return (
     <main className="max-w-md mx-auto p-6 mt-16 space-y-5">
       <h1 className="text-2xl font-bold">
-        Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+        Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
       </h1>
       <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
         <p className="font-medium text-slate-900 dark:text-slate-100">We&apos;ve added Terms of Service and a Privacy Policy</p>
@@ -38,21 +38,21 @@ export default function TermsGate() {
           Please review and agree to keep using RevBill.
         </p>
       </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
       <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
         <input
           type="checkbox"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
-          className="w-4 h-4 mt-0.5 accent-emerald-600 shrink-0"
+          className="w-4 h-4 mt-0.5 accent-sky-700 shrink-0"
         />
         <span>
           I am 18 or older and agree to the{" "}
-          <Link href="/terms" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+          <Link href="/terms" target="_blank" className="text-sky-700 dark:text-sky-400 hover:underline">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+          <Link href="/privacy" target="_blank" className="text-sky-700 dark:text-sky-400 hover:underline">
             Privacy Policy
           </Link>
           .
@@ -61,7 +61,7 @@ export default function TermsGate() {
       <button
         onClick={handleContinue}
         disabled={!agreed || saving}
-        className="w-full px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+        className="w-full px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
       >
         {saving ? "Saving…" : "Continue"}
       </button>

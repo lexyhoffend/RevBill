@@ -35,7 +35,7 @@ export default function HistoryPage() {
         <AccountNav />
       </div>
       <h1 className="text-2xl font-bold">History</h1>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       {sorted.length === 0 ? (
         <EmptyState illustration="calendar" title="No pay periods yet" subtitle="Once you've completed a cycle or two, they'll show up here." />
@@ -62,13 +62,13 @@ export default function HistoryPage() {
                 <td className="py-2 px-4 text-slate-400 whitespace-nowrap">
                   {p.start_date} – {p.end_date}
                 </td>
-                <td className="py-2 px-4 text-right text-emerald-700 dark:text-emerald-400">
+                <td className="py-2 px-4 text-right text-sky-700 dark:text-sky-400">
                   +{fmt(p.total_income)}
                 </td>
-                <td className="py-2 px-4 text-right text-red-600 dark:text-red-400">-{fmt(p.total_bills_paid)}</td>
+                <td className="py-2 px-4 text-right text-amber-700 dark:text-amber-400">-{fmt(p.total_bills_paid)}</td>
                 <td
                   className={`py-2 px-4 text-right font-medium ${
-                    p.left_over < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"
+                    p.left_over < 0 ? "text-amber-700 dark:text-amber-400" : "text-sky-700 dark:text-sky-400"
                   }`}
                 >
                   {fmt(p.left_over)}

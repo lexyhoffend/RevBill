@@ -4,7 +4,8 @@ import Link from "next/link";
 import AccountNav from "@/components/AccountNav";
 
 const TABS = [
-  { href: "/", label: "At a Glance" },
+  { href: "/", label: "Home" },
+  { href: "/glance", label: "At a Glance" },
   { href: "/periods", label: "Pay Periods" },
   { href: "/sources", label: "Setup" },
   { href: "/savings", label: "Savings" },
@@ -19,7 +20,7 @@ export default function DashboardHeader({ active }: { active: string }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-6">
         <h1 className="text-2xl font-bold shrink-0">
-          Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+          Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
         </h1>
         <AccountNav />
       </div>
@@ -30,8 +31,8 @@ export default function DashboardHeader({ active }: { active: string }) {
             href={tab.href}
             className={`text-sm hover:underline ${
               tab.href === active
-                ? "font-semibold text-emerald-700 dark:text-emerald-400"
-                : "text-slate-500 hover:text-emerald-700 dark:hover:text-emerald-400"
+                ? "font-semibold text-sky-700 dark:text-sky-400"
+                : "text-slate-500 hover:text-sky-700 dark:hover:text-sky-400"
             }`}
           >
             {tab.label}

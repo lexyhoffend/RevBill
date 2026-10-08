@@ -75,7 +75,7 @@ function AccountContent() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-2xl font-mono tracking-widest">{user.user_number}</span>
-          <button onClick={copyId} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline">
+          <button onClick={copyId} className="text-xs text-sky-700 dark:text-sky-400 hover:underline">
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
@@ -100,12 +100,12 @@ function AccountContent() {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
+            className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
-        {saved && <p className="text-xs text-emerald-700 dark:text-emerald-400">Saved.</p>}
+        {saved && <p className="text-xs text-sky-700 dark:text-sky-400">Saved.</p>}
       </form>
 
       <DeleteAccountSection />
@@ -139,14 +139,14 @@ function DeleteAccountSection() {
   }
 
   return (
-    <form onSubmit={handleDelete} className="rounded-xl border border-red-200 dark:border-red-900/60 p-4 space-y-3">
+    <form onSubmit={handleDelete} className="rounded-xl border border-red-200 p-4 space-y-3">
       <div>
-        <div className="text-sm font-medium text-red-700 dark:text-red-400">Delete account</div>
+        <div className="text-sm font-medium text-red-700">Delete account</div>
         <p className="text-xs text-slate-400 mt-1">
           Permanently removes your account and all of your data. Enter your password to confirm.
         </p>
       </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
       <div className="flex gap-2 items-start flex-wrap">
         <div className="flex-1 min-w-48">
           <PasswordInput value={password} onChange={setPassword} placeholder="Your password" required />
@@ -154,7 +154,7 @@ function DeleteAccountSection() {
         <button
           type="submit"
           disabled={deleting || !password}
-          className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-60"
+          className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-medium disabled:opacity-60"
         >
           {deleting ? "Deleting…" : "Delete account"}
         </button>

@@ -5,25 +5,53 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
 from app.database import Base, engine
-from app.routers import auth, periods, savings, sharing, sources
+from app.routers import auth, periods, plan, savings, sharing, sources
 
 Base.metadata.create_all(bind=engine)
 
 
-def _add_missing_user_columns() -> None:
+# Columns added to tables that already exist in deployed databases.
+_COLUMN_ADDITIONS = {
+    "users": {
+        "terms_accepted_at": "TIMESTAMP",
+        "terms_version": "VARCHAR(20)",
+        "pay_cycle_anchor_day2": "INTEGER",
+        "cycle_layout": "VARCHAR(10)",
+    },
+    "pay_periods": {
+        "pay_date": "DATE",
+        "plan_future_amount": "NUMERIC(10, 2)",
+        "plan_future_bucket_id": "INTEGER",
+        "plan_fun_amount": "NUMERIC(10, 2)",
+        "managed_at": "TIMESTAMP",
+    },
+    "bill_entries": {
+        "planned_amount": "NUMERIC(10, 2)",
+        "deferred_amount": "NUMERIC(10, 2) NOT NULL DEFAULT 0",
+    },
+    "income_sources": {
+        "cadence_day_of_month2": "INTEGER",
+    },
+}
+
+
+def _add_missing_columns() -> None:
     """create_all only creates missing tables, never missing columns, and
     there's no migration tool -- so columns added to an existing table are
-    added here, idempotently, on startup (plain nullable ADD COLUMN works on
-    both SQLite and Postgres)."""
-    existing = {c["name"] for c in inspect(engine).get_columns("users")}
-    additions = {"terms_accepted_at": "TIMESTAMP", "terms_version": "VARCHAR(20)"}
+    added here, idempotently, on startup (plain ADD COLUMN works on both
+    SQLite and Postgres). Legacy cycles get pay_date = end_date, the payday
+    they were laid out around."""
+    inspector = inspect(engine)
     with engine.begin() as conn:
-        for name, sql_type in additions.items():
-            if name not in existing:
-                conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {sql_type}"))
+        for table, columns in _COLUMN_ADDITIONS.items():
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, sql_type in columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"))
+        conn.execute(text("UPDATE pay_periods SET pay_date = end_date WHERE pay_date IS NULL"))
 
 
-_add_missing_user_columns()
+_add_missing_columns()
 
 app = FastAPI(title="RevBill API")
 
@@ -45,6 +73,7 @@ app.include_router(sources.router)
 app.include_router(periods.router)
 app.include_router(savings.router)
 app.include_router(sharing.router)
+app.include_router(plan.router)
 
 
 @app.get("/health")

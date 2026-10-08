@@ -35,14 +35,14 @@ export default function IncomeLineRow({ entry, onSave }: Props) {
   const isReceived = pendingReceived ?? entry.is_received;
 
   return (
-    <div className="flex items-center justify-between py-2 border-b border-emerald-100 dark:border-emerald-900/40">
+    <div className="flex items-center justify-between py-2 border-b border-slate-100">
       <div className="flex items-center gap-3">
         <input
           type="checkbox"
           checked={isReceived}
           disabled={saving}
           onChange={(e) => markReceived(e.target.checked)}
-          className="w-4 h-4 accent-emerald-600"
+          className="w-4 h-4 accent-sky-700"
           aria-label={`Mark ${entry.source_name} received`}
         />
         <div>
@@ -59,17 +59,17 @@ export default function IncomeLineRow({ entry, onSave }: Props) {
       </div>
       <div className="flex items-center gap-2">
         {isReceived ? (
-          <span className="text-xs text-emerald-600">received</span>
+          <span className="text-xs font-medium text-green-700">✓ received</span>
         ) : shortfall > 0 && entry.actual_amount > 0 ? (
-          <span className="text-xs text-amber-600">short {fmt(shortfall)}</span>
+          <span className="text-xs text-amber-700">short {fmt(shortfall)}</span>
         ) : (
           <span className="text-xs text-slate-400">not received</span>
         )}
-        <span className="text-emerald-700 dark:text-emerald-400 text-sm">+</span>
+        <span className="text-sky-700 dark:text-sky-400 text-sm">+</span>
         <input
           type="number"
           {...amount.inputProps}
-          className="w-28 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-right bg-transparent text-emerald-700 dark:text-emerald-400 font-medium"
+          className="w-28 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-right bg-white text-slate-800 font-medium"
         />
       </div>
     </div>

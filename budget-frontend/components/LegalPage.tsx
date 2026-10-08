@@ -8,7 +8,7 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
   return (
     <main className="max-w-2xl mx-auto p-6 space-y-6">
       <Link href="/" className="text-sm text-slate-500 hover:underline">
-        ← Rev<span className="text-emerald-700 dark:text-emerald-400">Bill</span>
+        ← Rev<span className="text-sky-700 dark:text-sky-400">Bill</span>
       </Link>
       <div>
         <h1 className="text-2xl font-bold">{title}</h1>

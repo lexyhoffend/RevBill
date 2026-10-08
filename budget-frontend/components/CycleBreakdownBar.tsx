@@ -11,7 +11,7 @@ export type BillGroupAmount = { label: string; amount: number };
 // Saved/Left below, so it's excluded here.
 const GROUP_COLORS: Record<string, string> = {
   Utilities: "bg-amber-500",
-  "Credit Card": "bg-red-600",
+  "Credit Card": "bg-violet-500",
   Rent: "bg-blue-500",
   Mortgage: "bg-violet-500",
   Loans: "bg-pink-500",
@@ -48,8 +48,8 @@ export default function CycleBreakdownBar({ income, billGroups, saved, leftOver 
         {segments.map(
           (s) => s.pct > 0 && <div key={s.label} className={s.color} style={{ width: `${s.pct}%` }} />
         )}
-        {savedPct > 0 && <div className="bg-emerald-600" style={{ width: `${savedPct}%` }} />}
-        {leftPct > 0 && <div className="bg-emerald-200" style={{ width: `${leftPct}%` }} />}
+        {savedPct > 0 && <div className="bg-sky-700" style={{ width: `${savedPct}%` }} />}
+        {leftPct > 0 && <div className="bg-sky-200" style={{ width: `${leftPct}%` }} />}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
         {segments.map((s) => (
@@ -58,10 +58,10 @@ export default function CycleBreakdownBar({ income, billGroups, saved, leftOver 
           </span>
         ))}
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-600" /> Saved {fmt(saved)}
+          <span className="w-2 h-2 rounded-full bg-sky-700" /> Saved {fmt(saved)}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-200" /> Left {fmt(leftOver)}
+          <span className="w-2 h-2 rounded-full bg-sky-200" /> Left {fmt(leftOver)}
         </span>
         <span className="ml-auto text-slate-400">of {fmt(income)} income</span>
       </div>

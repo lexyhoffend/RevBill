@@ -55,7 +55,7 @@ export default function TermsPage() {
               <p>
                 You own the information you enter, and you are responsible for its accuracy. You give us permission to
                 store and process it only as needed to run RevBill for you, as described in our{" "}
-                <Link href="/privacy" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+                <Link href="/privacy" className="text-sky-700 dark:text-sky-400 hover:underline">
                   Privacy Policy
                 </Link>
                 .
@@ -139,7 +139,7 @@ export default function TermsPage() {
           body: (
             <p>
               Questions about these terms:{" "}
-              <a href={`mailto:${LEGAL_CONTACT_EMAIL}`} className="text-emerald-700 dark:text-emerald-400 hover:underline">
+              <a href={`mailto:${LEGAL_CONTACT_EMAIL}`} className="text-sky-700 dark:text-sky-400 hover:underline">
                 {LEGAL_CONTACT_EMAIL}
               </a>
             </p>

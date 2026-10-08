@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const COLORS = ["#1D9E75", "#D85A30", "#7F77DD", "#D4537E", "#378ADD", "#EF9F27"];
+// Coral-forward: confetti is the one place the bright "win" accent appears.
+const COLORS = ["#FF7A59", "#FFA38A", "#F59E0B", "#38BDF8", "#22C55E", "#FB7185"];
 
 type Piece = { id: number; tx: number; ty: number; tr: number; color: string; delay: number };
 

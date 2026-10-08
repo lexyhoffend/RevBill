@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PayPeriod, deletePeriod, generateNextPeriod, listPeriods, createPeriod } from "@/lib/api";
-import { findCurrentPeriod, findNextPeriod, todayIso } from "@/lib/periodUtils";
+import { findCurrentPeriod, findNextPeriod, todayIso, payDateOf } from "@/lib/periodUtils";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -17,14 +17,14 @@ function addDaysIso(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-// Grouped by the period's own pay date (end_date) -- plain string slicing, not
-// Date parsing, to sidestep any local-timezone shift on YYYY-MM-DD strings.
+// Grouped by the period's own pay date -- plain string slicing, not Date
+// parsing, to sidestep any local-timezone shift on YYYY-MM-DD strings.
 function yearOf(p: PayPeriod): number {
-  return Number(p.end_date.slice(0, 4));
+  return Number(payDateOf(p).slice(0, 4));
 }
 
 function quarterOf(p: PayPeriod): number {
-  return Math.ceil(Number(p.end_date.slice(5, 7)) / 3);
+  return Math.ceil(Number(payDateOf(p).slice(5, 7)) / 3);
 }
 
 export default function PeriodsPage() {
@@ -50,17 +50,17 @@ function PeriodRow({
     <div
       className={`flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${
         badge === "current"
-          ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20"
+          ? "border-sky-300 dark:border-sky-700 bg-sky-50/40 dark:bg-sky-950/20"
           : badge === "next"
           ? "border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20"
-          : "border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20"
+          : "border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/40 dark:hover:bg-sky-950/20"
       }`}
     >
       <Link href={`/period/${p.id}`} className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium">{p.label}</span>
           {badge === "current" && (
-            <span className="text-[10px] uppercase tracking-wide font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full px-2 py-0.5">
+            <span className="text-[10px] uppercase tracking-wide font-semibold text-sky-700 bg-sky-100 dark:bg-sky-950/40 dark:text-sky-400 rounded-full px-2 py-0.5">
               Current
             </span>
           )}
@@ -69,12 +69,17 @@ function PeriodRow({
               Next
             </span>
           )}
+          {p.managed_at && (
+            <span className="text-[10px] uppercase tracking-wide font-semibold text-green-800 bg-green-100 rounded-full px-2 py-0.5">
+              ✓ Managed
+            </span>
+          )}
         </div>
         <div className="text-xs text-slate-400">
-          {p.start_date} – {p.end_date}
+          Payday {payDateOf(p)} · covers {p.start_date} – {p.end_date}
         </div>
       </Link>
-      <button onClick={() => onDelete(p)} className="text-xs text-red-500 hover:underline shrink-0">
+      <button onClick={() => onDelete(p)} className="text-xs text-slate-500 hover:text-red-700 hover:underline shrink-0">
         Delete
       </button>
     </div>
@@ -232,7 +237,7 @@ function PeriodsContent() {
     <main className="max-w-2xl mx-auto p-6 space-y-6">
       <DashboardHeader active="/periods" />
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-amber-700 text-sm">{error}</p>}
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold flex items-center gap-1">
@@ -247,7 +252,7 @@ function PeriodsContent() {
             <button
               onClick={mode === "custom" ? handleCreatePeriod : handleAddNextPeriod}
               disabled={creating}
-              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60 shrink-0"
+              className="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60 shrink-0"
             >
               {creating ? "Creating…" : mode === "custom" ? "+ New period" : "+ Add one more cycle"}
             </button>
@@ -261,7 +266,7 @@ function PeriodsContent() {
           title="No pay periods yet"
           subtitle="Set up your income and bills first, then create your first period."
           action={
-            <Link href="/sources" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
+            <Link href="/sources" className="text-sm text-sky-700 dark:text-sky-400 hover:underline">
               Set up income and bills →
             </Link>
           }

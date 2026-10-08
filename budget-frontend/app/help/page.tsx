@@ -22,7 +22,7 @@ const STEPS: { title: string; body: string }[] = [
   {
     title: "4. Find your current cycle",
     body:
-      'Go to Pay Periods. Your current cycle -- the most recent one whose pay date has already passed -- is always pinned at the top, with the next one right below it. Everything else is grouped by year and quarter, with the current year expanded and split into Upcoming and Past so old and future cycles never mix.',
+      'Go to Pay Periods. Your current cycle -- the one for your most recent payday -- is always pinned at the top, with the next one right below it. Everything else is grouped by year and quarter, with the current year expanded and split into Upcoming and Past so old and future cycles never mix.',
   },
   {
     title: "5. Mark things paid and received as they happen",
@@ -39,7 +39,7 @@ const STEPS: { title: string; body: string }[] = [
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'What\'s the difference between "Current" and "Next"?',
-    a: 'Current is the most recent cycle whose pay date has actually arrived -- a cycle doesn\'t become current the moment it starts, only once its own pay date hits. Next is simply the cycle right after it. Both are pinned at the top of Pay Periods so you never have to hunt for them.',
+    a: "Current is the cycle for your most recent payday. Each cycle starts on a payday and runs until the day before the next one, so its bills are the ones that paycheck pays. Next is simply the cycle right after it. Both are pinned at the top of Pay Periods so you never have to hunt for them.",
   },
   {
     q: "Why does a bill show \"Overdue\" even though I already paid it?",

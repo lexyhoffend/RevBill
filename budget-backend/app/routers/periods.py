@@ -28,6 +28,7 @@ from app.services.period_service import (
     compute_owed_balance,
     compute_period_totals,
     create_period_with_templates,
+    cycle_income_entries,
     ensure_upcoming_periods,
     find_overlapping_period,
     split_count_for_bill,
@@ -57,7 +58,7 @@ def _bill_entry_out(db: Session, user_id: int, e: BillEntry, period_id: int) -> 
     # shown next to every bill row on the period page regardless of paid status,
     # so it's a plain reference date, not just an "still outstanding" flag.
     due_date = (
-        _bill_due_date_in_range(e.period.start_date, e.period.end_date, e.source.due_day)
+        _bill_due_date_in_range(e.period.start_date, e.period.end_date, e.source.due_day, e.period.pay_date)
         if e.source.due_day is not None
         else None
     )
@@ -148,13 +149,17 @@ def list_periods_summary(db: Session = Depends(get_db), current_user: User = Dep
     periods = db.query(PayPeriod).filter_by(user_id=current_user.id).order_by(PayPeriod.start_date).all()
     result = []
     for period in periods:
-        totals = compute_period_totals(period.income_entries, period.bill_entries, period.savings_entries)
+        totals = compute_period_totals(
+            cycle_income_entries(db, period), period.bill_entries, period.savings_entries
+        )
         result.append(
             PayPeriodSummary(
                 id=period.id,
                 label=period.label,
                 start_date=period.start_date,
                 end_date=period.end_date,
+                pay_date=period.pay_date,
+                managed_at=period.managed_at,
                 **totals,
             )
         )
@@ -197,16 +202,19 @@ def _get_period_or_404(db: Session, period_id: int, user_id: int) -> PayPeriod:
 def get_period(period_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     period = _get_period_or_404(db, period_id, current_user.id)
 
-    income_out = [_income_entry_out(e) for e in period.income_entries]
+    income_entries = cycle_income_entries(db, period)
+    income_out = [_income_entry_out(e) for e in income_entries]
     bill_out = [_bill_entry_out(db, current_user.id, e, period_id) for e in period.bill_entries]
     savings_out = [_savings_entry_out(e) for e in period.savings_entries]
-    totals = compute_period_totals(period.income_entries, period.bill_entries, period.savings_entries)
+    totals = compute_period_totals(income_entries, period.bill_entries, period.savings_entries)
 
     return PayPeriodDetail(
         id=period.id,
         label=period.label,
         start_date=period.start_date,
         end_date=period.end_date,
+        pay_date=period.pay_date,
+        managed_at=period.managed_at,
         income_entries=income_out,
         bill_entries=bill_out,
         savings_entries=savings_out,

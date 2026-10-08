@@ -71,8 +71,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 onClick={() => close(true)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium text-white ${
                   state.mode === "confirm" && state.options.destructive
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-red-700 hover:bg-red-800"
+                    : "bg-sky-700 hover:bg-sky-800"
                 }`}
               >
                 {state.mode === "alert" ? "OK" : state.options.confirmLabel ?? "Delete"}

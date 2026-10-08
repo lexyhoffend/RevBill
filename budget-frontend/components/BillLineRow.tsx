@@ -47,14 +47,14 @@ export default function BillLineRow({ entry, onSave }: Props) {
   const isPaid = pendingPaid ?? entry.is_paid;
 
   return (
-    <div className="relative flex items-center justify-between py-2 border-b border-red-100 dark:border-red-900/30">
+    <div className="relative flex items-center justify-between py-2 border-b border-slate-100">
       <div className="flex items-center gap-3">
         <input
           type="checkbox"
           checked={isPaid}
           disabled={saving}
           onChange={(e) => markPaid(e.target.checked)}
-          className="w-4 h-4 accent-emerald-600"
+          className="w-4 h-4 accent-sky-700"
           aria-label={`Mark ${entry.source_name} paid`}
         />
         <BillCategoryIcon category={entry.category} className="w-4 h-4 shrink-0" />
@@ -70,9 +70,9 @@ export default function BillLineRow({ entry, onSave }: Props) {
           <div className="text-xs text-slate-400">
             {entry.category} · Target -{fmt(entry.target_amount)}
             {entry.due_date ? (
-              <span className={entry.is_overdue ? "text-red-600 dark:text-red-400 font-medium" : undefined}>
+              <span className={entry.is_overdue ? "text-amber-800 font-medium" : undefined}>
                 {" "}
-                · {entry.is_overdue ? "Overdue" : "Due"} {entry.due_date}
+                · {entry.is_overdue ? "⚠ Overdue" : "Due"} {entry.due_date}
               </span>
             ) : (
               entry.due_day && (
@@ -94,17 +94,17 @@ export default function BillLineRow({ entry, onSave }: Props) {
       </div>
       <div className="flex items-center gap-2">
         {isPaid ? (
-          <span className="text-xs text-emerald-600">paid</span>
+          <span className="text-xs font-medium text-green-700">✓ paid</span>
         ) : entry.actual_amount > 0 ? (
-          <span className="text-xs text-amber-600">partial</span>
+          <span className="text-xs text-amber-700">partial</span>
         ) : (
           <span className="text-xs text-slate-400">not paid</span>
         )}
-        <span className="text-red-600 dark:text-red-400 text-sm">-</span>
+        <span className="text-slate-500 text-sm">-</span>
         <input
           type="number"
           {...amount.inputProps}
-          className="w-28 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-right bg-transparent text-red-600 dark:text-red-400 font-medium"
+          className="w-28 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-right bg-white text-slate-800 font-medium"
         />
       </div>
     </div>

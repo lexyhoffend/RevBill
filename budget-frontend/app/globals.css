@@ -7,8 +7,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f2419;
+  /* Calm base: off-white page, deep slate text. Brand = soft blue (Tailwind
+     sky-700 for text/buttons, which passes WCAG AA on white); handled = green +
+     checkmark; needs attention = amber + a word; coral is saved for wins. Red
+     is only used for destructive actions like deleting an account. */
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {

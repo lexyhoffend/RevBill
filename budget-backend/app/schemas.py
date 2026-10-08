@@ -3,12 +3,12 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-CadenceType = Literal["monthly_date", "weekly", "biweekly"]
+CadenceType = Literal["monthly_date", "weekly", "biweekly", "semimonthly"]
 
 # Account-level setting governing how Payment Cycles are created -- distinct from
 # CadenceType above, which is per-income-source and only used to compute how many
 # times a given income lands within an already-existing period's date range.
-PayCycleMode = Literal["monthly", "biweekly", "weekly", "custom"]
+PayCycleMode = Literal["monthly", "semimonthly", "biweekly", "weekly", "custom"]
 
 
 class SignupIn(BaseModel):
@@ -30,6 +30,7 @@ class UserOut(BaseModel):
     pay_cycle_mode: Optional[PayCycleMode]
     pay_cycle_anchor_day: Optional[int]
     pay_cycle_anchor_date: Optional[datetime.date]
+    pay_cycle_anchor_day2: Optional[int] = None
     needs_terms: bool = False
 
     model_config = {"from_attributes": True}
@@ -45,7 +46,8 @@ class DeleteAccountIn(BaseModel):
 
 class PayCycleModeIn(BaseModel):
     mode: PayCycleMode
-    anchor_day: Optional[int] = None  # required for "monthly", 1-31
+    anchor_day: Optional[int] = None  # required for "monthly" and "semimonthly", 1-31
+    anchor_day2: Optional[int] = None  # second pay day, required for "semimonthly"
     anchor_date: Optional[datetime.date] = None  # required for "weekly"/"biweekly"
 
 
@@ -54,6 +56,7 @@ class IncomeSourceIn(BaseModel):
     cadence_type: CadenceType
     cadence_day_of_month: Optional[int] = None  # 1-31, required when cadence_type=monthly_date
     cadence_weekday: Optional[int] = None  # 0=Mon..6=Sun, required when weekly/biweekly
+    cadence_day_of_month2: Optional[int] = None  # second day, required when semimonthly
     start_date: datetime.date
     amount: float = 0  # positive, per occurrence
     active: bool = True
@@ -70,6 +73,7 @@ class IncomeSourceUpdate(BaseModel):
     cadence_type: Optional[CadenceType] = None
     cadence_day_of_month: Optional[int] = None
     cadence_weekday: Optional[int] = None
+    cadence_day_of_month2: Optional[int] = None
     start_date: Optional[datetime.date] = None
     amount: Optional[float] = None
     active: Optional[bool] = None
@@ -169,6 +173,8 @@ class PayPeriodOut(BaseModel):
     label: str
     start_date: datetime.date
     end_date: datetime.date
+    pay_date: Optional[datetime.date] = None
+    managed_at: Optional[datetime.datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -178,6 +184,8 @@ class PayPeriodSummary(BaseModel):
     label: str
     start_date: datetime.date
     end_date: datetime.date
+    pay_date: Optional[datetime.date] = None
+    managed_at: Optional[datetime.datetime] = None
     total_income: float
     total_bills_paid: float
     total_saved: float
@@ -198,6 +206,8 @@ class PayPeriodDetail(BaseModel):
     label: str
     start_date: datetime.date
     end_date: datetime.date
+    pay_date: Optional[datetime.date] = None
+    managed_at: Optional[datetime.datetime] = None
     income_entries: list[IncomeEntryOut]
     bill_entries: list[BillEntryOut]
     savings_entries: list[PeriodSavingsEntryOut]
