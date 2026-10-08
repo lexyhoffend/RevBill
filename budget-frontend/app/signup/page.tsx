@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,6 +20,10 @@ export default function SignupPage() {
     setError(null);
     if (password !== confirm) {
       setError("Passwords don't match");
+      return;
+    }
+    if (!agreed) {
+      setError("Please confirm you're 18 or older and agree to the Terms and Privacy Policy");
       return;
     }
     setSubmitting(true);
@@ -61,24 +66,33 @@ export default function SignupPage() {
           minLength={8}
         />
         <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm password" required />
+        <label className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            required
+            className="w-4 h-4 mt-px accent-emerald-600 shrink-0"
+          />
+          <span>
+            I am 18 or older and agree to the{" "}
+            <Link href="/terms" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !agreed}
           className="w-full px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-60"
         >
           {submitting ? "Creating account…" : "Create account"}
         </button>
-        <p className="text-xs text-slate-400">
-          By creating an account, you confirm you are 18 or older and agree to the{" "}
-          <Link href="/terms" className="text-emerald-700 dark:text-emerald-400 hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="text-emerald-700 dark:text-emerald-400 hover:underline">
-            Privacy Policy
-          </Link>
-          .
-        </p>
       </form>
 
       <p className="text-sm text-slate-400">
