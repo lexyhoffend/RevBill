@@ -1,5 +1,6 @@
 import datetime
 import random
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
@@ -28,11 +29,22 @@ from app.models import (
     SharedAccessIncome,
     User,
 )
-from app.schemas import DeleteAccountIn, LoginIn, PayCycleModeIn, ProfileUpdate, SignupIn, UserOut
+from app.schemas import (
+    DeleteAccountIn,
+    LoginIn,
+    PayCycleModeIn,
+    ProfileUpdate,
+    SignupIn,
+    UserOut,
+    WelcomeOut,
+    WelcomeSeenIn,
+)
 from app.services.events import log_event
 from app.services.period_service import (
     PAYDAY_LAYOUT,
+    cycle_income_entries,
     detach_reimbursement_bills,
+    find_current_period,
     ensure_upcoming_periods,
     reset_untouched_upcoming_periods,
 )
@@ -112,10 +124,43 @@ def logout(response: Response):
     return {"ok": True}
 
 
+def _welcome_for(db: Session, user: User) -> Optional[WelcomeOut]:
+    """The once-per-cycle "Welcome back" pop-up: the current cycle's income
+    (actual once received, otherwise what Setup expects), unless the user has
+    already closed it for this cycle."""
+    if user.pay_cycle_mode is None:
+        return None
+    current = find_current_period(db.query(PayPeriod).filter_by(user_id=user.id).all(), datetime.date.today())
+    if current is None:
+        return None
+    pay = current.pay_date or current.end_date
+    if user.welcome_seen_pay_date == pay:
+        return None
+    amount = sum(
+        float(e.actual_amount) if (e.is_received or float(e.actual_amount) > 0) else float(e.expected_amount)
+        for e in cycle_income_entries(db, current)
+    )
+    if amount <= 0:
+        return None
+    return WelcomeOut(period_id=current.id, pay_date=pay, amount=round(amount, 2))
+
+
 @router.get("/me", response_model=UserOut)
 def me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     ensure_upcoming_periods(db, current_user)
-    return current_user
+    out = UserOut.model_validate(current_user)
+    out.welcome = _welcome_for(db, current_user)
+    return out
+
+
+@router.post("/me/welcome-seen")
+def welcome_seen(payload: WelcomeSeenIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    period = db.query(PayPeriod).filter_by(id=payload.period_id, user_id=current_user.id).one_or_none()
+    if period is None:
+        raise HTTPException(status_code=404, detail="No such payment cycle")
+    current_user.welcome_seen_pay_date = period.pay_date or period.end_date
+    db.commit()
+    return {"ok": True}
 
 
 @router.patch("/me/profile", response_model=UserOut)

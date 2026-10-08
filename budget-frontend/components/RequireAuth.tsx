@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, getMe } from "@/lib/api";
 import TermsGate from "@/components/TermsGate";
+import OnboardingModal from "@/components/popups/OnboardingModal";
+import WelcomeModal, { shouldSkipWelcome } from "@/components/popups/WelcomeModal";
 
 type AuthState = { status: "loading" } | { status: "authed"; user: User } | { status: "anon" };
 
@@ -36,5 +38,20 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   if (state.user.needs_terms) {
     return <TermsGate />;
   }
-  return <>{children}</>;
+  // First visit: no pay schedule yet, so the key-information pop-up shows
+  // over an empty page. Later visits: the once-per-cycle welcome.
+  if (state.user.pay_cycle_mode === null) {
+    return (
+      <>
+        {children}
+        <OnboardingModal />
+      </>
+    );
+  }
+  return (
+    <>
+      {children}
+      {state.user.welcome && !shouldSkipWelcome() && <WelcomeModal welcome={state.user.welcome} name={state.user.name} />}
+    </>
+  );
 }

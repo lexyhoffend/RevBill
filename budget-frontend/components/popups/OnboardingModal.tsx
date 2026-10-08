@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { OnboardingData, completeOnboarding } from "@/lib/api";
-import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import { todayIso } from "@/lib/periodUtils";
+import Modal from "@/components/popups/Modal";
+import { SKIP_WELCOME_KEY } from "@/components/popups/WelcomeModal";
 
 type Schedule = OnboardingData["schedule"];
 type BillDraft = { name: string; amount: string; dueDay: string; category: string };
@@ -31,18 +31,11 @@ function nextFriday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function WelcomePage() {
-  return (
-    <RequireAuth>
-      <Onboarding />
-    </RequireAuth>
-  );
-}
-
-function Onboarding() {
-  const state = useAuth();
-  const router = useRouter();
-  const [step, setStep] = useState(0);
+/** First visit only (no pay schedule yet): the key information -- pay
+ * schedule and income, then the 3 biggest bills -- then "Finish Managing"
+ * opens Setup to fill in the rest. */
+export default function OnboardingModal() {
+  const [step, setStep] = useState(1);
   const [takeHome, setTakeHome] = useState("");
   const [schedule, setSchedule] = useState<Schedule>("biweekly");
   const [nextPayday, setNextPayday] = useState(nextFriday());
@@ -50,12 +43,6 @@ function Onboarding() {
   const [bills, setBills] = useState<BillDraft[]>([{ ...EMPTY_BILL }, { ...EMPTY_BILL }, { ...EMPTY_BILL }]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const alreadySetUp = state.status === "authed" && state.user.pay_cycle_mode !== null;
-  useEffect(() => {
-    if (alreadySetUp) router.replace("/");
-  }, [alreadySetUp, router]);
-  if (state.status !== "authed" || alreadySetUp) return null;
 
   function setBill(i: number, patch: Partial<BillDraft>) {
     setBills((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
@@ -87,11 +74,11 @@ function Onboarding() {
     setStep(2);
   }
 
-  async function finish(includeBills: boolean) {
+  async function saveSetup(includeBills: boolean) {
     setError(null);
     setSubmitting(true);
     try {
-      const { first_period_id } = await completeOnboarding({
+      await completeOnboarding({
         take_home: Number(takeHome),
         schedule,
         next_payday: nextPayday,
@@ -102,43 +89,40 @@ function Onboarding() {
               .map((b) => ({ name: b.name.trim(), amount: Number(b.amount), due_day: Number(b.dueDay) || null, category: b.category }))
           : [],
       });
-      // Full navigation so every page re-reads the account (pay schedule now set).
-      window.location.href = first_period_id ? `/manage/${first_period_id}` : "/";
+      setSubmitting(false);
+      setStep(3);
     } catch (err) {
       setError(String(err).replace(/^Error:\s*/, ""));
       setSubmitting(false);
     }
   }
 
+  function finishManaging() {
+    // This visit already covered the first cycle, so the "Welcome back"
+    // pop-up waits for their next visit. Full navigation so every page
+    // re-reads the account (pay schedule now set).
+    try {
+      sessionStorage.setItem(SKIP_WELCOME_KEY, "1");
+    } catch {
+      // storage unavailable -- they may see the welcome once, which is fine
+    }
+    window.location.href = "/sources";
+  }
+
   return (
-    <main className="max-w-md mx-auto p-6 mt-10 space-y-6">
+    <Modal labelledBy="onboarding-title">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          Rev<span className="text-sky-700">Bill</span>
+        <h1 id="onboarding-title" className="text-xl font-bold">
+          Welcome to Rev<span className="text-sky-700">Bill</span>
         </h1>
-        {step > 0 && <span className="text-xs text-slate-400">Step {step} of 2</span>}
+        {step < 3 && <span className="text-xs text-slate-400">Step {step} of 2</span>}
       </div>
 
       {error && <p className="text-amber-800 text-sm">{error}</p>}
 
-      {step === 0 && (
-        <section className="space-y-5">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold text-slate-900 leading-tight">Let&apos;s put the money you EARN to work.</h2>
-            <p className="text-slate-600">
-              Tell us about your paycheck and your biggest bills. In about a minute you&apos;ll see exactly what every
-              dollar is doing.
-            </p>
-          </div>
-          <button onClick={() => setStep(1)} className="w-full px-4 py-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-medium">
-            Get started
-          </button>
-        </section>
-      )}
-
       {step === 1 && (
         <form onSubmit={payContinue} className="space-y-5">
-          <h2 className="text-xl font-semibold text-slate-900">Your pay</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Let&apos;s put the money you EARN to work. First, your pay:</h2>
           <label className="block space-y-1">
             <span className="text-sm font-medium text-slate-800">What do you usually take home per paycheck?</span>
             <div className="flex items-center gap-2">
@@ -210,7 +194,7 @@ function Onboarding() {
       {step === 2 && (
         <section className="space-y-5">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Your 3 biggest bills</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Your 3 biggest bills</h2>
             <p className="text-sm text-slate-600">You can add the rest later.</p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -259,17 +243,31 @@ function Onboarding() {
             <p className="text-xs text-slate-500">Due = day of the month it&apos;s due (1-31).</p>
           </div>
           <button
-            onClick={() => finish(true)}
+            onClick={() => saveSetup(true)}
             disabled={submitting}
             className="w-full px-4 py-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-medium disabled:opacity-60"
           >
-            {submitting ? "Setting up…" : "Show my plan"}
+            {submitting ? "Saving…" : "Continue"}
           </button>
-          <button onClick={() => finish(false)} disabled={submitting} className="w-full text-sm text-slate-500 hover:underline">
+          <button onClick={() => saveSetup(false)} disabled={submitting} className="w-full text-sm text-slate-500 hover:underline">
             Skip for now
           </button>
         </section>
       )}
-    </main>
+
+      {step === 3 && (
+        <section className="space-y-5">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-slate-900">You&apos;re off to a great start!</h2>
+            <p className="text-sm text-slate-600">
+              Next, finish setting up your payment information: add any other income and the rest of your bills.
+            </p>
+          </div>
+          <button onClick={finishManaging} className="w-full px-4 py-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-medium">
+            Finish Managing
+          </button>
+        </section>
+      )}
+    </Modal>
   );
 }

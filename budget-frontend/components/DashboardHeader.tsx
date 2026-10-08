@@ -4,7 +4,6 @@ import Link from "next/link";
 import AccountNav from "@/components/AccountNav";
 
 const TABS = [
-  { href: "/", label: "Home" },
   { href: "/glance", label: "At a Glance" },
   { href: "/periods", label: "Pay Periods" },
   { href: "/sources", label: "Setup" },

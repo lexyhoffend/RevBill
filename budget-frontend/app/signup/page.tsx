@@ -29,8 +29,8 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, agreed);
-      // New accounts go through the 90-second onboarding
-      router.push("/welcome");
+      // New accounts get the first-time pop-up (shown by RequireAuth)
+      router.push("/");
     } catch (err) {
       setError(String(err).replace(/^Error:\s*/, ""));
     } finally {

@@ -66,8 +66,16 @@ export default function PeriodPage() {
             </Link>
             <AccountNav />
           </div>
-          <div>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-bold">{period.label}</h1>
+            {(period.pay_date ?? period.end_date) <= period.start_date && (
+              <Link
+                href={`/manage/${period.id}`}
+                className="text-sm px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
+              >
+                {period.managed_at ? "✓ Plan: every dollar has a job" : "Give every dollar a job →"}
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">

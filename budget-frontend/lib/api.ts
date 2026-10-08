@@ -207,7 +207,12 @@ export type User = {
   pay_cycle_anchor_date: string | null;
   pay_cycle_anchor_day2: number | null;
   needs_terms: boolean;
+  welcome: Welcome | null;
 };
+
+export type Welcome = { period_id: number; pay_date: string; amount: number };
+export const markWelcomeSeen = (periodId: number) =>
+  jsonFetch<{ ok: boolean }>("/auth/me/welcome-seen", { method: "POST", body: JSON.stringify({ period_id: periodId }) });
 
 export const signup = (email: string, password: string, acceptedTerms: boolean) =>
   jsonFetch<User>("/auth/signup", {

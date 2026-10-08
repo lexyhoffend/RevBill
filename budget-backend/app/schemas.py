@@ -32,8 +32,20 @@ class UserOut(BaseModel):
     pay_cycle_anchor_date: Optional[datetime.date]
     pay_cycle_anchor_day2: Optional[int] = None
     needs_terms: bool = False
+    # "Welcome back" pop-up for the current pay cycle, if not yet shown.
+    welcome: Optional["WelcomeOut"] = None
 
     model_config = {"from_attributes": True}
+
+
+class WelcomeOut(BaseModel):
+    period_id: int
+    pay_date: datetime.date
+    amount: float
+
+
+class WelcomeSeenIn(BaseModel):
+    period_id: int
 
 
 class ProfileUpdate(BaseModel):
@@ -430,3 +442,6 @@ class SharedWithMeOut(BaseModel):
     current_period_label: Optional[str] = None
     bills: list[SharedBillStatus]
     income: list[SharedIncomeStatus]
+
+
+UserOut.model_rebuild()

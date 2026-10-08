@@ -17,6 +17,7 @@ _COLUMN_ADDITIONS = {
         "terms_version": "VARCHAR(20)",
         "pay_cycle_anchor_day2": "INTEGER",
         "cycle_layout": "VARCHAR(10)",
+        "welcome_seen_pay_date": "DATE",
     },
     "pay_periods": {
         "pay_date": "DATE",

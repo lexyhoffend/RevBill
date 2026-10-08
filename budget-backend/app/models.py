@@ -53,6 +53,9 @@ class User(Base):
     # END on the payday); ensure_upcoming_periods switches those accounts over
     # once, leaving existing cycles untouched -- see _switch_to_payday_layout.
     cycle_layout: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default=None)
+    # Payday of the cycle whose "Welcome back" pop-up this user has already
+    # closed -- the pop-up shows once per pay cycle.
+    welcome_seen_pay_date: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True, default=None)
 
 
     @property

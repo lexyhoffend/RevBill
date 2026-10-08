@@ -63,7 +63,7 @@ function ManageContent() {
   if (!plan.plannable) {
     return (
       <main className="max-w-2xl mx-auto p-6 space-y-3">
-        <Link href="/" className="text-sm text-slate-500 hover:underline">← Home</Link>
+        <Link href={`/period/${periodId}`} className="text-sm text-slate-500 hover:underline">← Back to cycle</Link>
         <p className="text-sm text-slate-600">This older cycle&apos;s bills were all due before its payday, so there&apos;s nothing to plan here.</p>
       </main>
     );
@@ -85,7 +85,7 @@ function ManageContent() {
   return (
     <main className="max-w-2xl mx-auto p-6 space-y-6 pb-40">
       <div className="flex items-center justify-between gap-6">
-        <Link href="/" className="text-sm text-slate-500 hover:underline shrink-0">← Home</Link>
+        <Link href={`/period/${p.period_id}`} className="text-sm text-slate-500 hover:underline shrink-0">← Back to cycle</Link>
         <AccountNav />
       </div>
 
@@ -186,7 +186,7 @@ function ManageContent() {
             </div>
           </div>
           {p.managed_at ? (
-            <Link href="/" className="px-5 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
+            <Link href={`/period/${p.period_id}`} className="px-5 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium">
               Done
             </Link>
           ) : (
