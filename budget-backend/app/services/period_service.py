@@ -424,7 +424,9 @@ def reset_untouched_upcoming_periods(db: Session, user: User) -> int:
     return removed
 
 
-def compute_owed_balance(db: Session, user_id: int, bill_source_id: int, as_of_period_id: int) -> float:
+def compute_owed_balance(
+    db: Session, user_id: int, bill_source_id: int, as_of_period_id: int, include_as_of: bool = True
+) -> float:
     """Current balance remaining on a revolving bill (credit card): the source's
     default_target_amount is its standing balance, which every payment made
     against it (across every period up to and including as_of_period_id) pays
@@ -443,7 +445,10 @@ def compute_owed_balance(db: Session, user_id: int, bill_source_id: int, as_of_p
     )
     if as_of_period_id not in periods_in_order:
         return 0.0
-    relevant_period_ids = periods_in_order[: periods_in_order.index(as_of_period_id) + 1]
+    # include_as_of=False gives the balance carried INTO that period (only
+    # earlier cycles' payments) -- used as a revolving bill's per-cycle target.
+    cutoff = periods_in_order.index(as_of_period_id) + (1 if include_as_of else 0)
+    relevant_period_ids = periods_in_order[:cutoff]
 
     entries = (
         db.query(BillEntry)
@@ -583,7 +588,15 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
     )[:2]
     for p in relevant_periods:
         for entry in p.bill_entries:
-            shortfall = float(entry.target_amount) - float(entry.actual_amount)
+            # Revolving cards owe what's carried into this cycle, not the opening
+            # balance snapshotted on the entry -- so a card that's been paid off
+            # drops off this list instead of showing its original balance.
+            target = (
+                compute_owed_balance(db, user.id, entry.bill_source_id, p.id, include_as_of=False)
+                if entry.source.is_revolving
+                else float(entry.target_amount)
+            )
+            shortfall = target - float(entry.actual_amount)
             if shortfall > 0:
                 due_date = _bill_due_date_in_range(p.start_date, p.end_date, entry.source.due_day)
                 if due_date is None:
@@ -621,6 +634,14 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
     # balance paydown, not a fresh recurring charge.
     monthly_by_category: dict[str, float] = {}
     annual_by_category: dict[str, float] = {}
+    cycle_by_category: dict[str, float] = {}
+    if current is not None:
+        for entry in current.bill_entries:
+            if entry.source.is_revolving or float(entry.actual_amount) <= 0:
+                continue
+            cycle_by_category[entry.source.category] = cycle_by_category.get(entry.source.category, 0.0) + float(
+                entry.actual_amount
+            )
     for p in periods:
         if p.end_date.year != today.year:
             continue
@@ -635,12 +656,15 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
                 )
 
     bill_categories = []
-    for category in sorted(annual_by_category, key=lambda c: -monthly_by_category.get(c, 0.0)):
+    # Union with the cycle's categories: in early January the current cycle can
+    # hold payments that belong to no current-year bucket yet.
+    for category in sorted(set(annual_by_category) | set(cycle_by_category), key=lambda c: -monthly_by_category.get(c, 0.0)):
         bill_categories.append(
             {
                 "category": category,
                 "monthly": monthly_by_category.get(category, 0.0),
                 "annual": annual_by_category.get(category, 0.0),
+                "cycle": cycle_by_category.get(category, 0.0),
             }
         )
     monthly_bills_total = sum(monthly_by_category.values())
@@ -651,6 +675,13 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
     # grouped by source name (income sources have no category, unlike bills).
     monthly_income_by_source: dict[str, float] = {}
     annual_income_by_source: dict[str, float] = {}
+    cycle_income_by_source: dict[str, float] = {}
+    if current is not None:
+        for entry in current.income_entries:
+            if float(entry.actual_amount) <= 0:
+                continue
+            name = entry.source.name if entry.income_source_id else entry.custom_label
+            cycle_income_by_source[name] = cycle_income_by_source.get(name, 0.0) + float(entry.actual_amount)
     for p in periods:
         if p.end_date.year != today.year:
             continue
@@ -664,12 +695,15 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
                 monthly_income_by_source[name] = monthly_income_by_source.get(name, 0.0) + amount
 
     income_sources_breakdown = []
-    for name in sorted(annual_income_by_source, key=lambda n: -monthly_income_by_source.get(n, 0.0)):
+    for name in sorted(
+        set(annual_income_by_source) | set(cycle_income_by_source), key=lambda n: -monthly_income_by_source.get(n, 0.0)
+    ):
         income_sources_breakdown.append(
             {
                 "category": name,
                 "monthly": monthly_income_by_source.get(name, 0.0),
                 "annual": annual_income_by_source.get(name, 0.0),
+                "cycle": cycle_income_by_source.get(name, 0.0),
             }
         )
     monthly_income_total = sum(monthly_income_by_source.values())
@@ -684,6 +718,37 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
         occurrence_map = {"monthly_date": 12, "weekly": 52, "biweekly": 26}
         annual_income = sum(float(s.amount) * occurrence_map.get(s.cadence_type, 12) for s in income_sources)
         monthly_income_estimate = annual_income / 12
+
+    # Per-cycle estimates: averages over completed cycles before the current
+    # one. Cycles with nothing received and nothing paid are skipped -- those
+    # are auto-generated placeholders from before the user started tracking,
+    # and counting them as $0 would drag the average down. One-time income and
+    # revolving (credit card) payments are left out, matching the "recurring"
+    # framing of the rest of the page.
+    estimated_income_per_cycle = None
+    estimated_bills_per_cycle = None
+    past_active = []
+    if current is not None:
+        for p in periods:
+            if p.end_date >= current.end_date:
+                continue
+            income = sum(float(e.actual_amount) for e in p.income_entries if e.income_source_id is not None)
+            bills = sum(float(e.actual_amount) for e in p.bill_entries if not e.source.is_revolving)
+            any_activity = any(float(e.actual_amount) > 0 for e in p.income_entries) or any(
+                float(e.actual_amount) > 0 for e in p.bill_entries
+            )
+            if any_activity:
+                past_active.append((income, bills))
+    if past_active:
+        estimated_income_per_cycle = sum(i for i, _ in past_active) / len(past_active)
+        estimated_bills_per_cycle = sum(b for _, b in past_active) / len(past_active)
+
+    # Cycles per year, to scale per-cycle estimates to Monthly/Annual views.
+    cycles_per_year = {"weekly": 52.0, "biweekly": 26.0, "monthly": 12.0}.get(user.pay_cycle_mode or "", 0.0)
+    if not cycles_per_year:
+        spans = [(p.end_date - p.start_date).days + 1 for p in periods]
+        avg_days = sum(spans) / len(spans) if spans else 0
+        cycles_per_year = round(365 / avg_days, 2) if avg_days > 0 else 26.0
 
     bills_percent_of_income = None
     if monthly_income_estimate and monthly_income_estimate > 0:
@@ -709,6 +774,12 @@ def compute_dashboard_summary(db: Session, user: User) -> dict:
         "annual_income_total": annual_income_total,
         "monthly_income_estimate": monthly_income_estimate,
         "bills_percent_of_income": bills_percent_of_income,
+        "cycle_bills_total": sum(cycle_by_category.values()),
+        "cycle_income_total": sum(cycle_income_by_source.values()),
+        "estimated_income_per_cycle": estimated_income_per_cycle,
+        "estimated_bills_per_cycle": estimated_bills_per_cycle,
+        "estimate_cycle_count": len(past_active),
+        "cycles_per_year": cycles_per_year,
     }
 
 
@@ -726,6 +797,19 @@ def split_count_for_bill(db: Session, owner_id: int, bill_source_id: int) -> int
         .all()
     )
     return 1 + len(viewer_emails)
+
+
+def detach_reimbursement_bills(db: Session, shared_access_bill_ids: list[int]) -> None:
+    """Call before deleting SharedAccessBill rows. Viewers' derived
+    reimbursement bills hold a foreign key to those rows, which Postgres
+    enforces, so the delete would fail. Unlinking and deactivating them is the
+    same end state sync_reimbursement_bills_for_viewer gives a link that stops
+    applying: hidden going forward, past payment history kept."""
+    if not shared_access_bill_ids:
+        return
+    db.query(BillSource).filter(BillSource.shared_access_bill_id.in_(shared_access_bill_ids)).update(
+        {BillSource.shared_access_bill_id: None, BillSource.active: False}, synchronize_session=False
+    )
 
 
 def sync_reimbursement_bills_for_viewer(db: Session, viewer: User) -> None:

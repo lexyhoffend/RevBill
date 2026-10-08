@@ -37,6 +37,10 @@ class ProfileUpdate(BaseModel):
     name: Optional[str] = None
 
 
+class DeleteAccountIn(BaseModel):
+    password: str
+
+
 class PayCycleModeIn(BaseModel):
     mode: PayCycleMode
     anchor_day: Optional[int] = None  # required for "monthly", 1-31
@@ -274,6 +278,7 @@ class CategoryProjection(BaseModel):
     category: str
     monthly: float  # actually paid, summed across cycles whose pay date falls in the current month
     annual: float  # actually paid, summed across cycles whose pay date falls in the current year
+    cycle: float = 0.0  # actually paid in the current pay cycle only
 
 
 class CardOwed(BaseModel):
@@ -309,6 +314,16 @@ class DashboardSummary(BaseModel):
 
     monthly_income_estimate: Optional[float]
     bills_percent_of_income: Optional[float]
+
+    # Current pay cycle's real totals, for the per-cycle tab
+    cycle_bills_total: float = 0.0
+    cycle_income_total: float = 0.0
+    # Per-cycle averages over completed past cycles that had activity -- see
+    # compute_dashboard_summary. None until at least one such cycle exists.
+    estimated_income_per_cycle: Optional[float] = None
+    estimated_bills_per_cycle: Optional[float] = None
+    estimate_cycle_count: int = 0
+    cycles_per_year: float = 26.0
 
 
 class SharedSourceRef(BaseModel):

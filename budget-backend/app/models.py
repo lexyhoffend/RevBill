@@ -101,14 +101,17 @@ class PayPeriod(Base):
     start_date: Mapped[datetime.date] = mapped_column(Date)
     end_date: Mapped[datetime.date] = mapped_column(Date)
 
+    # Explicit order_by: without it Postgres returns rows in physical order, and
+    # an UPDATE rewrites the row elsewhere -- so checking an item off would
+    # make it jump to a different spot in the list.
     income_entries: Mapped[list["IncomeEntry"]] = relationship(
-        back_populates="period", cascade="all, delete-orphan"
+        back_populates="period", cascade="all, delete-orphan", order_by="IncomeEntry.id"
     )
     bill_entries: Mapped[list["BillEntry"]] = relationship(
-        back_populates="period", cascade="all, delete-orphan"
+        back_populates="period", cascade="all, delete-orphan", order_by="BillEntry.id"
     )
     savings_entries: Mapped[list["SavingsEntry"]] = relationship(
-        back_populates="period", cascade="all, delete-orphan"
+        back_populates="period", cascade="all, delete-orphan", order_by="SavingsEntry.id"
     )
 
 

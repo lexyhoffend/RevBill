@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,11 +32,21 @@ export default function PeriodPage() {
   const [period, setPeriod] = useState<PayPeriodDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Saves made close together (e.g. typing an amount, then checking "paid")
+  // each trigger a reload, and those can come back out of order. Only the
+  // newest reload is applied, so an older snapshot never overwrites newer
+  // state -- that's what made a checked box appear to uncheck itself.
+  const latestRequest = useRef(0);
   const refresh = useCallback(() => {
     if (!periodId) return;
+    const requestId = ++latestRequest.current;
     getPeriod(periodId)
-      .then(setPeriod)
-      .catch((e) => setError(String(e)));
+      .then((data) => {
+        if (requestId === latestRequest.current) setPeriod(data);
+      })
+      .catch((e) => {
+        if (requestId === latestRequest.current) setError(String(e));
+      });
   }, [periodId]);
 
   useEffect(refresh, [refresh]);
@@ -150,7 +160,7 @@ export default function PeriodPage() {
             </div>
 
             <div className="order-1 lg:order-2 lg:sticky lg:top-6">
-              <BillMonthCalendar />
+              <BillMonthCalendar key={period.id} initialDate={period.end_date} />
             </div>
           </div>
         </main>

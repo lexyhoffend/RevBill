@@ -3,13 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BillCalendarEntry, getBillCalendar } from "@/lib/api";
+import { todayIso } from "@/lib/periodUtils";
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 // Local Date() component constructors, never ISO-string parsing -- avoids any
@@ -34,14 +31,16 @@ const MONTH_NAMES = [
 
 /** Compact month calendar with the same due/overdue/paid status dots as the
  * full Calendar page -- meant to sit in a sticky sidebar next to a scrolling
- * list (e.g. Pay Periods) so the current month is always visible. */
-export default function BillMonthCalendar() {
+ * list (e.g. Pay Periods) so the current month is always visible. Pass
+ * `initialDate` (YYYY-MM-DD) to open on a specific cycle's month instead. */
+export default function BillMonthCalendar({ initialDate }: { initialDate?: string } = {}) {
   const [entries, setEntries] = useState<BillCalendarEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const today = todayIso();
-  const [year, setYear] = useState(Number(today.slice(0, 4)));
-  const [month, setMonth] = useState(Number(today.slice(5, 7)));
-  const [selectedDate, setSelectedDate] = useState<string | null>(today);
+  const startDate = initialDate ?? today;
+  const [year, setYear] = useState(Number(startDate.slice(0, 4)));
+  const [month, setMonth] = useState(Number(startDate.slice(5, 7)));
+  const [selectedDate, setSelectedDate] = useState<string | null>(startDate);
 
   useEffect(() => {
     getBillCalendar()

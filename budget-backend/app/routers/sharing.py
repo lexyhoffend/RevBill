@@ -24,7 +24,7 @@ from app.schemas import (
     SplitBillOut,
     SplitPartner,
 )
-from app.services.period_service import compute_shared_view, split_count_for_bill
+from app.services.period_service import compute_shared_view, detach_reimbursement_bills, split_count_for_bill
 
 router = APIRouter(prefix="/sharing", tags=["sharing"])
 
@@ -146,8 +146,16 @@ def update_shared_access(
 
     if payload.bill_source_ids is not None:
         _validate_source_ids(db, current_user.id, payload.bill_source_ids, [])
-        db.query(SharedAccessBill).filter_by(shared_access_id=shared.id).delete()
-        for bid in payload.bill_source_ids:
+        # Only touch links that actually changed: keeping an unchanged bill's
+        # SharedAccessBill row keeps the viewer's reimbursement bill attached
+        # to it instead of replacing it with a fresh one on every edit.
+        wanted = set(payload.bill_source_ids)
+        existing = db.query(SharedAccessBill).filter_by(shared_access_id=shared.id).all()
+        removed = [sab for sab in existing if sab.bill_source_id not in wanted]
+        detach_reimbursement_bills(db, [sab.id for sab in removed])
+        for sab in removed:
+            db.delete(sab)
+        for bid in wanted - {sab.bill_source_id for sab in existing}:
             db.add(SharedAccessBill(shared_access_id=shared.id, bill_source_id=bid))
 
     if payload.income_source_ids is not None:
@@ -166,6 +174,7 @@ def delete_shared_access(
     shared_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     shared = _get_shared_access_or_404(db, shared_id, current_user.id)
+    detach_reimbursement_bills(db, [sab.id for sab in shared.shared_bills])
     db.delete(shared)
     db.commit()
     return {"deleted": True}
@@ -273,7 +282,9 @@ def remove_split_partner(
     them untouched."""
     source = _get_owned_bill_source_or_404(db, bill_source_id, current_user.id)
     shared = _get_shared_access_or_404(db, shared_access_id, current_user.id)
-    db.query(SharedAccessBill).filter_by(shared_access_id=shared.id, bill_source_id=bill_source_id).delete()
+    links = db.query(SharedAccessBill).filter_by(shared_access_id=shared.id, bill_source_id=bill_source_id)
+    detach_reimbursement_bills(db, [sab.id for sab in links])
+    links.delete(synchronize_session=False)
     db.commit()
     db.refresh(source)
     return _split_bill_out(db, source)

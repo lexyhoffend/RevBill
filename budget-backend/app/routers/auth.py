@@ -12,9 +12,25 @@ from app.auth import (
     verify_password,
 )
 from app.database import get_db
-from app.models import User
-from app.schemas import LoginIn, PayCycleModeIn, ProfileUpdate, SignupIn, UserOut
-from app.services.period_service import ensure_upcoming_periods, reset_untouched_upcoming_periods
+from app.models import (
+    BillEntry,
+    BillSource,
+    IncomeEntry,
+    IncomeSource,
+    PayPeriod,
+    SavingsBucket,
+    SavingsEntry,
+    SharedAccess,
+    SharedAccessBill,
+    SharedAccessIncome,
+    User,
+)
+from app.schemas import DeleteAccountIn, LoginIn, PayCycleModeIn, ProfileUpdate, SignupIn, UserOut
+from app.services.period_service import (
+    detach_reimbursement_bills,
+    ensure_upcoming_periods,
+    reset_untouched_upcoming_periods,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -97,6 +113,60 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/me/delete")
+def delete_account(
+    payload: DeleteAccountIn,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently deletes the signed-in user and everything they own. Requires
+    their password again so a left-open session can't wipe an account.
+
+    Bulk deletes run child-first because Postgres enforces the foreign keys.
+    Reimbursement bills that other people got from this user's splits are
+    detached and deactivated rather than deleted -- the same way they
+    deactivate when a split partner is removed -- so those people keep their
+    own payment history."""
+    if not verify_password(payload.password, current_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    uid = current_user.id
+    share_ids = [row.id for row in db.query(SharedAccess.id).filter_by(owner_id=uid)]
+    period_ids = [row.id for row in db.query(PayPeriod.id).filter_by(user_id=uid)]
+    bucket_ids = [row.id for row in db.query(SavingsBucket.id).filter_by(user_id=uid)]
+    bill_source_ids = [row.id for row in db.query(BillSource.id).filter_by(user_id=uid)]
+    income_source_ids = [row.id for row in db.query(IncomeSource.id).filter_by(user_id=uid)]
+
+    if share_ids:
+        sab_ids = [row.id for row in db.query(SharedAccessBill.id).filter(SharedAccessBill.shared_access_id.in_(share_ids))]
+        detach_reimbursement_bills(db, sab_ids)
+        db.query(SharedAccessBill).filter(SharedAccessBill.shared_access_id.in_(share_ids)).delete(synchronize_session=False)
+        db.query(SharedAccessIncome).filter(SharedAccessIncome.shared_access_id.in_(share_ids)).delete(synchronize_session=False)
+        db.query(SharedAccess).filter(SharedAccess.id.in_(share_ids)).delete(synchronize_session=False)
+
+    if period_ids:
+        db.query(IncomeEntry).filter(IncomeEntry.period_id.in_(period_ids)).delete(synchronize_session=False)
+        db.query(BillEntry).filter(BillEntry.period_id.in_(period_ids)).delete(synchronize_session=False)
+        db.query(SavingsEntry).filter(SavingsEntry.period_id.in_(period_ids)).delete(synchronize_session=False)
+    if bucket_ids:
+        db.query(SavingsEntry).filter(SavingsEntry.bucket_id.in_(bucket_ids)).delete(synchronize_session=False)
+    if bill_source_ids:
+        db.query(BillEntry).filter(BillEntry.bill_source_id.in_(bill_source_ids)).delete(synchronize_session=False)
+    if income_source_ids:
+        db.query(IncomeEntry).filter(IncomeEntry.income_source_id.in_(income_source_ids)).delete(synchronize_session=False)
+
+    db.query(PayPeriod).filter_by(user_id=uid).delete(synchronize_session=False)
+    db.query(SavingsBucket).filter_by(user_id=uid).delete(synchronize_session=False)
+    db.query(BillSource).filter_by(user_id=uid).delete(synchronize_session=False)
+    db.query(IncomeSource).filter_by(user_id=uid).delete(synchronize_session=False)
+    db.query(User).filter_by(id=uid).delete(synchronize_session=False)
+    db.commit()
+
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return {"deleted": True}
 
 
 @router.patch("/me/pay-cycle", response_model=UserOut)

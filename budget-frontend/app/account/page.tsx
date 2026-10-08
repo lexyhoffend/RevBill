@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { updateProfile } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { deleteAccount, updateProfile } from "@/lib/api";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import AccountNav from "@/components/AccountNav";
 import InfoTooltip from "@/components/InfoTooltip";
+import PasswordInput from "@/components/PasswordInput";
+import { useConfirm } from "@/components/ConfirmProvider";
 
 export default function AccountPage() {
   return (
@@ -104,6 +107,58 @@ function AccountContent() {
         </div>
         {saved && <p className="text-xs text-emerald-700 dark:text-emerald-400">Saved.</p>}
       </form>
+
+      <DeleteAccountSection />
     </main>
+  );
+}
+
+function DeleteAccountSection() {
+  const router = useRouter();
+  const { confirm } = useConfirm();
+  const [password, setPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const ok = await confirm(
+      "This permanently deletes your account, every bill, income source, pay cycle, and savings bucket, and ends anything you've shared. This can't be undone.",
+      { title: "Delete your account?", confirmLabel: "Delete account", destructive: true }
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteAccount(password);
+      router.push("/signup");
+    } catch (err) {
+      setError(String(err).replace(/^Error:\s*/, ""));
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleDelete} className="rounded-xl border border-red-200 dark:border-red-900/60 p-4 space-y-3">
+      <div>
+        <div className="text-sm font-medium text-red-700 dark:text-red-400">Delete account</div>
+        <p className="text-xs text-slate-400 mt-1">
+          Permanently removes your account and all of your data. Enter your password to confirm.
+        </p>
+      </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+      <div className="flex gap-2 items-start flex-wrap">
+        <div className="flex-1 min-w-48">
+          <PasswordInput value={password} onChange={setPassword} placeholder="Your password" required />
+        </div>
+        <button
+          type="submit"
+          disabled={deleting || !password}
+          className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-60"
+        >
+          {deleting ? "Deleting…" : "Delete account"}
+        </button>
+      </div>
+    </form>
   );
 }

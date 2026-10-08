@@ -1,7 +1,11 @@
 type DatedPeriod = { start_date: string; end_date: string };
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+/** Today's date in the user's own timezone, as YYYY-MM-DD. Not
+ * toISOString(), which is UTC and rolls over to tomorrow every evening in
+ * US timezones. */
+export function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /** The period you're actively living in: the most recent one whose pay date

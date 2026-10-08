@@ -3,17 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PayPeriod, deletePeriod, generateNextPeriod, listPeriods, createPeriod } from "@/lib/api";
-import { findCurrentPeriod, findNextPeriod } from "@/lib/periodUtils";
+import { findCurrentPeriod, findNextPeriod, todayIso } from "@/lib/periodUtils";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
 import DashboardHeader from "@/components/DashboardHeader";
 import { useConfirm } from "@/components/ConfirmProvider";
 import InfoTooltip from "@/components/InfoTooltip";
 import EmptyState from "@/components/EmptyState";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function addDaysIso(iso: string, days: number) {
   const d = new Date(iso);

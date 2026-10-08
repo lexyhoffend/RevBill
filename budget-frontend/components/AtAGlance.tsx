@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DashboardSummary, getDashboardSummary } from "@/lib/api";
+import { DashboardSummary, PayCycleMode, getDashboardSummary } from "@/lib/api";
+import { useAuth } from "@/components/RequireAuth";
+import Confetti from "@/components/Confetti";
 import CategoryPieChart from "@/components/CategoryPieChart";
 import InfoTooltip from "@/components/InfoTooltip";
 import BillCategoryIcon from "@/components/BillCategoryIcon";
@@ -12,15 +14,134 @@ function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
+type ViewPeriod = "cycle" | "monthly" | "annual";
+
+// Label for the per-cycle tab. A monthly schedule gets no separate tab --
+// one cycle already is the Monthly view.
+function cycleTabLabel(mode: PayCycleMode | null | undefined): string | null {
+  if (mode === "biweekly") return "Bi-weekly";
+  if (mode === "weekly") return "Weekly";
+  if (mode === "monthly") return null;
+  return "This cycle";
+}
+
+const PERIOD_TOTAL_LABEL: Record<ViewPeriod, string> = {
+  cycle: "this cycle",
+  monthly: "this month",
+  annual: "this year",
+};
+
+// Last card balances seen on this page, so a payoff is celebrated once, here,
+// after the payments are actually saved -- not the instant a checkbox fills
+// in a full amount on the cycle page. Per-browser convenience only.
+const CARD_BALANCES_KEY = "revbill:lastCardBalances";
+
+function readSeenBalances(): Record<string, number> | null {
+  try {
+    const raw = localStorage.getItem(CARD_BALANCES_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSeenBalances(balances: Record<string, number>) {
+  try {
+    localStorage.setItem(CARD_BALANCES_KEY, JSON.stringify(balances));
+  } catch {
+    // storage unavailable (private window etc.) -- just skip the celebration memory
+  }
+}
+
+function PeriodTabs({
+  value,
+  onChange,
+  cycleLabel,
+}: {
+  value: ViewPeriod;
+  onChange: (p: ViewPeriod) => void;
+  cycleLabel: string | null;
+}) {
+  const tabs: { key: ViewPeriod; label: string }[] = [
+    ...(cycleLabel ? [{ key: "cycle" as const, label: cycleLabel }] : []),
+    { key: "monthly", label: "Monthly" },
+    { key: "annual", label: "Annual" },
+  ];
+  return (
+    <div className="flex rounded-lg border border-slate-200 text-xs overflow-hidden shrink-0">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          className={`px-3 py-1 ${value === t.key ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EstimateLine({
+  label,
+  perCycle,
+  period,
+  cyclesPerYear,
+  cycleCount,
+}: {
+  label: string;
+  perCycle: number | null;
+  period: ViewPeriod;
+  cyclesPerYear: number;
+  cycleCount: number;
+}) {
+  const multiplier = period === "cycle" ? 1 : period === "monthly" ? cyclesPerYear / 12 : cyclesPerYear;
+  return (
+    <div className="flex justify-between items-baseline text-sm text-slate-500">
+      <span className="flex items-center gap-1">
+        {label} ({PERIOD_TOTAL_LABEL[period].replace("this ", "per ")})
+        <InfoTooltip
+          text={
+            cycleCount > 0
+              ? `Average per pay cycle across your ${cycleCount} completed cycle${cycleCount === 1 ? "" : "s"} with activity, scaled to this view. Leaves out one-time income and credit card payments, and doesn't count the cycle you're in now. Gets more accurate as you complete more cycles.`
+              : "Appears once you've completed at least one pay cycle with income received or bills paid."
+          }
+        />
+      </span>
+      <span>{perCycle == null ? "Not enough history yet" : fmt(perCycle * multiplier)}</span>
+    </div>
+  );
+}
+
 export default function AtAGlance() {
+  const auth = useAuth();
+  const cycleLabel = cycleTabLabel(auth.status === "authed" ? auth.user.pay_cycle_mode : null);
+  const defaultPeriod: ViewPeriod = cycleLabel ? "cycle" : "monthly";
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [billPeriod, setBillPeriod] = useState<"monthly" | "annual">("monthly");
-  const [incomePeriod, setIncomePeriod] = useState<"monthly" | "annual">("monthly");
+  const [billPeriod, setBillPeriod] = useState<ViewPeriod>(defaultPeriod);
+  const [incomePeriod, setIncomePeriod] = useState<ViewPeriod>(defaultPeriod);
+  const [paidOffNames, setPaidOffNames] = useState<string[]>([]);
+  const [burstKey, setBurstKey] = useState(0);
 
   useEffect(() => {
     getDashboardSummary()
-      .then(setSummary)
+      .then((data) => {
+        setSummary(data);
+        const seen = readSeenBalances();
+        const now: Record<string, number> = {};
+        const newlyPaidOff: string[] = [];
+        for (const c of data.cards_owed) {
+          now[c.bill_source_id] = c.owed_balance;
+          const before = seen?.[c.bill_source_id];
+          if (before !== undefined && before > 0 && c.owed_balance === 0) newlyPaidOff.push(c.name);
+        }
+        writeSeenBalances(now);
+        if (newlyPaidOff.length > 0) {
+          setPaidOffNames(newlyPaidOff);
+          setBurstKey((k) => k + 1);
+        }
+      })
       .catch((e) => setError(String(e)));
   }, []);
 
@@ -43,7 +164,15 @@ export default function AtAGlance() {
     monthly_income_total,
     annual_income_total,
     bills_percent_of_income,
+    cycle_bills_total,
+    cycle_income_total,
+    estimated_income_per_cycle,
+    estimated_bills_per_cycle,
+    estimate_cycle_count,
+    cycles_per_year,
   } = summary;
+  const pick = (p: ViewPeriod, cycle: number, monthly: number, annual: number) =>
+    p === "cycle" ? cycle : p === "monthly" ? monthly : annual;
 
   const savingsPct =
     total_savings_goal && total_savings_goal > 0
@@ -51,19 +180,31 @@ export default function AtAGlance() {
       : null;
 
   const pieSlices = bill_categories
-    .map((c) => ({ label: c.category, value: billPeriod === "monthly" ? c.monthly : c.annual }))
+    .map((c) => ({ label: c.category, value: pick(billPeriod, c.cycle, c.monthly, c.annual) }))
     .filter((s) => s.value > 0);
 
-  const billPeriodTotal = billPeriod === "monthly" ? monthly_bills_total : annual_bills_total;
+  const billPeriodTotal = pick(billPeriod, cycle_bills_total, monthly_bills_total, annual_bills_total);
 
   const incomePieSlices = income_sources
-    .map((s) => ({ label: s.category, value: incomePeriod === "monthly" ? s.monthly : s.annual }))
+    .map((s) => ({ label: s.category, value: pick(incomePeriod, s.cycle, s.monthly, s.annual) }))
     .filter((s) => s.value > 0);
 
-  const incomePeriodTotal = incomePeriod === "monthly" ? monthly_income_total : annual_income_total;
+  const incomePeriodTotal = pick(incomePeriod, cycle_income_total, monthly_income_total, annual_income_total);
 
   return (
     <section className="space-y-4">
+      {paidOffNames.length > 0 && (
+        <div className="relative rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900 p-4 flex items-center justify-between gap-3">
+          <Confetti burstKey={burstKey} count={24} />
+          <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+            🎉 Paid off! {paidOffNames.join(", ")} {paidOffNames.length === 1 ? "is" : "are"} down to $0.
+          </div>
+          <button onClick={() => setPaidOffNames([])} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline shrink-0">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <MonthlyRecap summary={summary} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -101,27 +242,14 @@ export default function AtAGlance() {
             <div>
               <div className="text-sm font-medium flex items-center gap-1">
                 Recurring bills
-                <InfoTooltip text="Monthly shows amounts actually paid in cycles whose pay date falls in the current calendar month. Annual does the same for the current calendar year. Not a projection -- an unpaid bill contributes nothing until it's paid." />
+                <InfoTooltip text="The per-cycle tab shows amounts actually paid in your current pay cycle. Monthly shows cycles whose pay date falls in the current calendar month, and Annual the current calendar year. Not a projection -- an unpaid bill contributes nothing until it's paid. The estimate line below is the projection." />
               </div>
               <div className="text-xs text-slate-400">
                 Actual amounts paid, by category -- revolving cards aren't included here since they're tracked
                 separately below.
               </div>
             </div>
-            <div className="flex rounded-lg border border-slate-200 text-xs overflow-hidden shrink-0">
-              <button
-                onClick={() => setBillPeriod("monthly")}
-                className={`px-3 py-1 ${billPeriod === "monthly" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillPeriod("annual")}
-                className={`px-3 py-1 ${billPeriod === "annual" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                Annual
-              </button>
-            </div>
+            <PeriodTabs value={billPeriod} onChange={setBillPeriod} cycleLabel={cycleLabel} />
           </div>
 
           {pieSlices.length > 0 && (
@@ -134,9 +262,16 @@ export default function AtAGlance() {
           )}
 
           <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 font-medium text-sm">
-            <span>Total ({billPeriod === "monthly" ? "this month" : "this year"})</span>
+            <span>Total ({PERIOD_TOTAL_LABEL[billPeriod]})</span>
             <span>{fmt(billPeriodTotal)}</span>
           </div>
+          <EstimateLine
+            label="Estimated recurring bills"
+            perCycle={estimated_bills_per_cycle}
+            period={billPeriod}
+            cyclesPerYear={cycles_per_year}
+            cycleCount={estimate_cycle_count}
+          />
           {bills_percent_of_income != null && (
             <div className="text-xs text-slate-400">
               That's about {bills_percent_of_income}% of your estimated monthly income.
@@ -151,24 +286,11 @@ export default function AtAGlance() {
             <div>
               <div className="text-sm font-medium flex items-center gap-1">
                 Income
-                <InfoTooltip text="Same idea as Recurring bills: Monthly/Annual are real amounts you've actually marked received, attributed to the cycle's own pay date -- not an estimate." />
+                <InfoTooltip text="Same idea as Recurring bills: the tabs show real amounts you've actually marked received, attributed to the cycle's own pay date. The estimate line below is the projection." />
               </div>
               <div className="text-xs text-slate-400">Actual amounts received, by source.</div>
             </div>
-            <div className="flex rounded-lg border border-slate-200 text-xs overflow-hidden shrink-0">
-              <button
-                onClick={() => setIncomePeriod("monthly")}
-                className={`px-3 py-1 ${incomePeriod === "monthly" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setIncomePeriod("annual")}
-                className={`px-3 py-1 ${incomePeriod === "annual" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                Annual
-              </button>
-            </div>
+            <PeriodTabs value={incomePeriod} onChange={setIncomePeriod} cycleLabel={cycleLabel} />
           </div>
 
           {incomePieSlices.length > 0 && (
@@ -176,9 +298,16 @@ export default function AtAGlance() {
           )}
 
           <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 font-medium text-sm">
-            <span>Total ({incomePeriod === "monthly" ? "this month" : "this year"})</span>
+            <span>Total ({PERIOD_TOTAL_LABEL[incomePeriod]})</span>
             <span>{fmt(incomePeriodTotal)}</span>
           </div>
+          <EstimateLine
+            label="Estimated income"
+            perCycle={estimated_income_per_cycle}
+            period={incomePeriod}
+            cyclesPerYear={cycles_per_year}
+            cycleCount={estimate_cycle_count}
+          />
         </div>
       )}
 

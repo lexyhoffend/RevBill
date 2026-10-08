@@ -21,15 +21,11 @@ import {
   updateBillSource,
   updateIncomeSource,
 } from "@/lib/api";
-import { findCurrentPeriod } from "@/lib/periodUtils";
+import { findCurrentPeriod, todayIso } from "@/lib/periodUtils";
 import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
 import AccountNav from "@/components/AccountNav";
 import { useConfirm } from "@/components/ConfirmProvider";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function addDaysIso(iso: string, days: number) {
   const d = new Date(iso);
@@ -338,7 +334,7 @@ export default function SourcesPage() {
   const [cycleName, setCycleName] = useState("");
   const [cadenceType, setCadenceType] = useState<CadenceType>("biweekly");
   const [dayOfMonth, setDayOfMonth] = useState("1");
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(todayIso());
   const [cycleAmount, setCycleAmount] = useState("");
 
   // Bill form state

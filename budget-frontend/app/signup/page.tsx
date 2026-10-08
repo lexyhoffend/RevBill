@@ -68,6 +68,17 @@ export default function SignupPage() {
         >
           {submitting ? "Creating account…" : "Create account"}
         </button>
+        <p className="text-xs text-slate-400">
+          By creating an account, you confirm you are 18 or older and agree to the{" "}
+          <Link href="/terms" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="text-sm text-slate-400">

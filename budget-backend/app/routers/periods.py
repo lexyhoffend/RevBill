@@ -76,7 +76,14 @@ def _bill_entry_out(db: Session, user_id: int, e: BillEntry, period_id: int) -> 
         source_name=e.source.name,
         category=e.source.category,
         is_revolving=e.source.is_revolving,
-        target_amount=float(e.target_amount),
+        # A revolving card's target is whatever is still owed going into this
+        # cycle, so it steps down as earlier cycles pay it off, rather than the
+        # stale opening balance snapshotted when the entry was created.
+        target_amount=(
+            compute_owed_balance(db, user_id, e.bill_source_id, period_id, include_as_of=False)
+            if e.source.is_revolving
+            else float(e.target_amount)
+        ),
         actual_amount=float(e.actual_amount),
         is_paid=e.is_paid,
         owed_balance=(

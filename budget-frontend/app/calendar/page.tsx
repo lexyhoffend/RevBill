@@ -7,13 +7,10 @@ import RequireAuth from "@/components/RequireAuth";
 import RequirePayCycle from "@/components/RequirePayCycle";
 import DashboardHeader from "@/components/DashboardHeader";
 import InfoTooltip from "@/components/InfoTooltip";
+import { todayIso } from "@/lib/periodUtils";
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 // Local Date() component constructors, never ISO-string parsing -- avoids any

@@ -211,6 +211,8 @@ export const login = (email: string, password: string) =>
 export const setPayCycleMode = (data: { mode: PayCycleMode; anchor_day?: number | null; anchor_date?: string | null }) =>
   jsonFetch<User>("/auth/me/pay-cycle", { method: "PATCH", body: JSON.stringify(data) });
 export const logout = () => jsonFetch("/auth/logout", { method: "POST" });
+export const deleteAccount = (password: string) =>
+  jsonFetch<{ deleted: boolean }>("/auth/me/delete", { method: "POST", body: JSON.stringify({ password }) });
 export const getMe = () => jsonFetch<User>("/auth/me");
 export const updateProfile = (data: { name: string | null }) =>
   jsonFetch<User>("/auth/me/profile", { method: "PATCH", body: JSON.stringify(data) });
@@ -286,6 +288,7 @@ export type CategoryProjection = {
   category: string;
   monthly: number;
   annual: number;
+  cycle: number;
 };
 
 export type CardOwed = {
@@ -316,6 +319,12 @@ export type DashboardSummary = {
   annual_income_total: number;
   monthly_income_estimate: number | null;
   bills_percent_of_income: number | null;
+  cycle_bills_total: number;
+  cycle_income_total: number;
+  estimated_income_per_cycle: number | null;
+  estimated_bills_per_cycle: number | null;
+  estimate_cycle_count: number;
+  cycles_per_year: number;
 };
 
 export const getDashboardSummary = () => jsonFetch<DashboardSummary>("/periods/dashboard-summary");

@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { PayCycleMode, listBillSources, listIncomeSources, setPayCycleMode } from "@/lib/api";
 import RequireAuth, { useAuth } from "@/components/RequireAuth";
 import AccountNav from "@/components/AccountNav";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayIso } from "@/lib/periodUtils";
 
 const MODE_OPTIONS: { value: PayCycleMode; label: string; description: string }[] = [
   { value: "monthly", label: "Monthly", description: "One cycle per month, covering the month before a pay date you choose (e.g. paid on the 15th)." },

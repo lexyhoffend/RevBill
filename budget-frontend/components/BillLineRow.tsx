@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { BillEntry } from "@/lib/api";
 import BillCategoryIcon from "@/components/BillCategoryIcon";
-import Confetti from "@/components/Confetti";
+import { useAmountField } from "@/components/useAmountField";
 
 type Props = {
   entry: BillEntry;
@@ -22,48 +22,36 @@ function ordinal(n: number): string {
 }
 
 export default function BillLineRow({ entry, onSave }: Props) {
-  const [value, setValue] = useState(String(entry.actual_amount));
+  const amount = useAmountField(entry.actual_amount, (n) => onSave(n));
   const [saving, setSaving] = useState(false);
-  const [burstKey, setBurstKey] = useState(0);
-  const [justPaidOff, setJustPaidOff] = useState(false);
-  const prevOwedRef = useRef(entry.owed_balance);
+  // Shows the click immediately instead of waiting for the reload, and drops
+  // itself once the server's value catches up.
+  const [pendingPaid, setPendingPaid] = useState<boolean | null>(null);
+  if (pendingPaid !== null && pendingPaid === entry.is_paid && !saving) setPendingPaid(null);
 
-  // A revolving card's balance hitting exactly zero -- coming down from
-  // something owed -- is a bigger moment than a routine paid checkbox, so it
-  // gets its own celebration independent of whether *this* checkbox was
-  // touched (the payoff might land from a payment made in an earlier cycle).
-  useEffect(() => {
-    const prev = prevOwedRef.current;
-    prevOwedRef.current = entry.owed_balance;
-    if (entry.is_revolving && prev > 0 && entry.owed_balance === 0) {
-      setJustPaidOff(true);
-      setBurstKey((k) => k + 1);
-      const t = setTimeout(() => setJustPaidOff(false), 2500);
-      return () => clearTimeout(t);
-    }
-  }, [entry.owed_balance, entry.is_revolving]);
-
+  // Checking keeps whatever amount is already typed and only fills in the
+  // target when the amount is still empty. The typed amount is sent along
+  // with the flag, so the result is the same whichever of "check" and "type
+  // an amount" happens first. Payoff celebrations live on At a Glance, after
+  // the real payments are saved, never here.
   async function markPaid(paid: boolean) {
     setSaving(true);
-    const newAmount = paid ? entry.target_amount : 0;
-    setValue(String(newAmount));
+    setPendingPaid(paid);
+    const typed = amount.numeric;
+    const newAmount = paid ? (typed > 0 ? typed : entry.target_amount) : 0;
+    amount.set(newAmount);
     await onSave(newAmount, paid);
-    if (paid) setBurstKey((k) => k + 1);
     setSaving(false);
   }
 
+  const isPaid = pendingPaid ?? entry.is_paid;
+
   return (
     <div className="relative flex items-center justify-between py-2 border-b border-red-100 dark:border-red-900/30">
-      <Confetti burstKey={burstKey} />
-      {justPaidOff && (
-        <span className="absolute -top-1 right-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full px-2 py-0.5">
-          Paid off! 🎉
-        </span>
-      )}
       <div className="flex items-center gap-3">
         <input
           type="checkbox"
-          checked={entry.is_paid}
+          checked={isPaid}
           disabled={saving}
           onChange={(e) => markPaid(e.target.checked)}
           className="w-4 h-4 accent-emerald-600"
@@ -105,7 +93,7 @@ export default function BillLineRow({ entry, onSave }: Props) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {entry.is_paid ? (
+        {isPaid ? (
           <span className="text-xs text-emerald-600">paid</span>
         ) : entry.actual_amount > 0 ? (
           <span className="text-xs text-amber-600">partial</span>
@@ -115,9 +103,7 @@ export default function BillLineRow({ entry, onSave }: Props) {
         <span className="text-red-600 dark:text-red-400 text-sm">-</span>
         <input
           type="number"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={() => onSave(Number(value) || 0)}
+          {...amount.inputProps}
           className="w-28 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-right bg-transparent text-red-600 dark:text-red-400 font-medium"
         />
       </div>

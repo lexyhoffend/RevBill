@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 
@@ -30,6 +31,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ConfirmProvider>{children}</ConfirmProvider>
+        <footer className="mt-auto py-6 text-center text-xs text-slate-400 space-x-3">
+          <Link href="/terms" className="hover:underline">Terms of Service</Link>
+          <span aria-hidden>·</span>
+          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+        </footer>
       </body>
     </html>
   );
