@@ -28,7 +28,7 @@ export default function SignupPage() {
     }
     setSubmitting(true);
     try {
-      await signup(email, password);
+      await signup(email, password, agreed);
       // New accounts go straight into Setup to add their Payment Cycles and bills
       router.push("/sources");
     } catch (err) {

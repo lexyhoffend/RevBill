@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, getMe } from "@/lib/api";
+import TermsGate from "@/components/TermsGate";
 
 type AuthState = { status: "loading" } | { status: "authed"; user: User } | { status: "anon" };
 
@@ -31,6 +32,9 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   }
   if (state.status === "anon") {
     return null; // redirect already in flight
+  }
+  if (state.user.needs_terms) {
+    return <TermsGate />;
   }
   return <>{children}</>;
 }

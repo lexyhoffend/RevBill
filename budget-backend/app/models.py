@@ -27,6 +27,13 @@ class User(Base):
     # still the fallback.
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default=None)
 
+    # Record of agreeing to the Terms of Service and Privacy Policy: when, and
+    # which version (app.legal.CURRENT_TERMS_VERSION at the time). Null for
+    # accounts created before the policies existed until they accept. Added
+    # to existing databases by app.main._add_missing_user_columns.
+    terms_accepted_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True, default=None)
+    terms_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
+
     # How Payment Cycles get created for this user. Null means "hasn't chosen yet" --
     # gates the user into the /setup-cycle picker on their next login. "custom" means
     # fully manual creation (today's original behavior); the other three modes are
@@ -37,6 +44,13 @@ class User(Base):
     pay_cycle_mode: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
     pay_cycle_anchor_day: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
     pay_cycle_anchor_date: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True, default=None)
+
+
+    @property
+    def needs_terms(self) -> bool:
+        from app.legal import CURRENT_TERMS_VERSION
+
+        return self.terms_version != CURRENT_TERMS_VERSION
 
 
 class IncomeSource(Base):

@@ -21,7 +21,8 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <strong>Account information:</strong> your email address, an optional display name, a 7-digit account ID,
-                and your password, which is stored only as a one-way scrambled (hashed) value that we cannot read.
+                your password, which is stored only as a one-way scrambled (hashed) value that we cannot read, and the date
+                you agreed to these Terms and this Privacy Policy (and which version).
               </li>
               <li>
                 <strong>Budget information you enter:</strong> pay cycle settings, income sources and amounts, bills,

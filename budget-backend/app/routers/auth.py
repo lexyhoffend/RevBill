@@ -1,3 +1,4 @@
+import datetime
 import random
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -12,6 +13,7 @@ from app.auth import (
     verify_password,
 )
 from app.database import get_db
+from app.legal import CURRENT_TERMS_VERSION
 from app.models import (
     BillEntry,
     BillSource,
@@ -65,6 +67,10 @@ def signup(payload: SignupIn, response: Response, db: Session = Depends(get_db))
         raise HTTPException(status_code=400, detail="Enter a valid email address")
     if len(payload.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not payload.accepted_terms:
+        raise HTTPException(
+            status_code=400, detail="You must be 18 or older and agree to the Terms of Service and Privacy Policy"
+        )
     if db.query(User).filter_by(email=email).one_or_none() is not None:
         raise HTTPException(status_code=409, detail="An account with this email already exists")
 
@@ -72,6 +78,8 @@ def signup(payload: SignupIn, response: Response, db: Session = Depends(get_db))
         email=email,
         hashed_password=hash_password(payload.password),
         user_number=generate_unique_user_number(db),
+        terms_accepted_at=datetime.datetime.utcnow(),
+        terms_version=CURRENT_TERMS_VERSION,
     )
     db.add(user)
     db.commit()
@@ -110,6 +118,16 @@ def update_profile(
 ):
     if payload.name is not None:
         current_user.name = payload.name.strip() or None
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/me/accept-terms", response_model=UserOut)
+def accept_terms(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """One-time agreement for accounts that predate the current policies."""
+    current_user.terms_accepted_at = datetime.datetime.utcnow()
+    current_user.terms_version = CURRENT_TERMS_VERSION
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -202,10 +202,15 @@ export type User = {
   pay_cycle_mode: PayCycleMode | null;
   pay_cycle_anchor_day: number | null;
   pay_cycle_anchor_date: string | null;
+  needs_terms: boolean;
 };
 
-export const signup = (email: string, password: string) =>
-  jsonFetch<User>("/auth/signup", { method: "POST", body: JSON.stringify({ email, password }) });
+export const signup = (email: string, password: string, acceptedTerms: boolean) =>
+  jsonFetch<User>("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, password, accepted_terms: acceptedTerms }),
+  });
+export const acceptTerms = () => jsonFetch<User>("/auth/me/accept-terms", { method: "POST" });
 export const login = (email: string, password: string) =>
   jsonFetch<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 export const setPayCycleMode = (data: { mode: PayCycleMode; anchor_day?: number | null; anchor_date?: string | null }) =>

@@ -14,6 +14,7 @@ PayCycleMode = Literal["monthly", "biweekly", "weekly", "custom"]
 class SignupIn(BaseModel):
     email: str
     password: str
+    accepted_terms: bool = False
 
 
 class LoginIn(BaseModel):
@@ -29,6 +30,7 @@ class UserOut(BaseModel):
     pay_cycle_mode: Optional[PayCycleMode]
     pay_cycle_anchor_day: Optional[int]
     pay_cycle_anchor_date: Optional[datetime.date]
+    needs_terms: bool = False
 
     model_config = {"from_attributes": True}
 
