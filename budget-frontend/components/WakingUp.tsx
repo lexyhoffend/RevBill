@@ -18,7 +18,8 @@ export default function WakingUp({ compact = false }: { compact?: boolean }) {
       <div className="space-y-1">
         <p className="text-lg font-semibold text-slate-900">Waking up RevBill…</p>
         <p className="text-sm text-slate-600">
-          RevBill takes a short nap when no one&apos;s using it. This can take up to a minute. Thanks for your patience!
+          RevBill is a free product running on free hosting, so it takes a short nap when no one&apos;s using it.
+          Waking it back up can take up to a minute. Thanks for your patience!
         </p>
       </div>
     </main>
