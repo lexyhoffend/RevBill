@@ -193,9 +193,41 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // body wasn't JSON -- fall through to the raw form below
     }
-    throw new Error(detail ?? `${res.status} ${res.statusText}: ${body}`);
+    const err = new Error(detail ?? `${res.status} ${res.statusText}: ${body}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return res.json();
+}
+
+/** True for failures that mean "the server is still starting up" (it sleeps
+ * when idle on the free hosting plan): no response at all, or a 500/502/503/504
+ * from the proxy in front of it. Anything else (wrong password, 404...) is a
+ * real answer. */
+export function isWakingError(e: unknown): boolean {
+  const status = (e as { status?: number })?.status;
+  return status === undefined || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+/** Runs `fn`, retrying while the server is waking up (up to ~90s). Calls
+ * `onSlow` once if the first answer takes more than 2 seconds, so the page
+ * can show "Waking up RevBill…" instead of looking stuck. */
+export async function withWakeRetry<T>(fn: () => Promise<T>, onSlow?: () => void): Promise<T> {
+  const timer = onSlow ? setTimeout(onSlow, 2000) : undefined;
+  const deadline = Date.now() + 90_000;
+  try {
+    for (;;) {
+      try {
+        return await fn();
+      } catch (e) {
+        if (!isWakingError(e) || Date.now() > deadline) throw e;
+        onSlow?.();
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export type User = {
@@ -231,6 +263,8 @@ export const setPayCycleMode = (data: {
 }) =>
   jsonFetch<User>("/auth/me/pay-cycle", { method: "PATCH", body: JSON.stringify(data) });
 export const logout = () => jsonFetch("/auth/logout", { method: "POST" });
+/** Cheap request that just makes sure the server is awake. */
+export const wakeServer = () => jsonFetch<{ status: string }>("/health");
 export const deleteAccount = (password: string) =>
   jsonFetch<{ deleted: boolean }>("/auth/me/delete", { method: "POST", body: JSON.stringify({ password }) });
 export const getMe = () => jsonFetch<User>("/auth/me");

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signup } from "@/lib/api";
+import { isWakingError, signup, wakeServer, withWakeRetry } from "@/lib/api";
+import WakingUp from "@/components/WakingUp";
 import PasswordInput from "@/components/PasswordInput";
 
 export default function SignupPage() {
@@ -14,6 +15,7 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [waking, setWaking] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,14 +29,24 @@ export default function SignupPage() {
       return;
     }
     setSubmitting(true);
+    setWaking(false);
     try {
+      // Wake the server first, then sign up once -- retrying the signup itself
+      // after a timeout could try to create the same account twice.
+      await withWakeRetry(wakeServer, () => setWaking(true));
+      setWaking(false);
       await signup(email, password, agreed);
       // New accounts get the first-time pop-up (shown by RequireAuth)
       router.push("/");
     } catch (err) {
-      setError(String(err).replace(/^Error:\s*/, ""));
+      setError(
+        isWakingError(err)
+          ? "RevBill is taking longer than usual to wake up. Please try again in a moment."
+          : String(err).replace(/^Error:\s*/, "")
+      );
     } finally {
       setSubmitting(false);
+      setWaking(false);
     }
   }
 
@@ -91,7 +103,7 @@ export default function SignupPage() {
           disabled={submitting || !agreed}
           className="w-full px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
-          {submitting ? "Creating account…" : "Create account"}
+          {waking ? <WakingUp compact /> : submitting ? "Creating account…" : "Create account"}
         </button>
       </form>
 

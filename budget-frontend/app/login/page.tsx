@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { isWakingError, login, withWakeRetry } from "@/lib/api";
+import WakingUp from "@/components/WakingUp";
 import PasswordInput from "@/components/PasswordInput";
 
 export default function LoginPage() {
@@ -12,18 +13,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [waking, setWaking] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+    setWaking(false);
     try {
-      await login(email, password);
+      await withWakeRetry(() => login(email, password), () => setWaking(true));
       router.push("/");
-    } catch {
-      setError("Incorrect email or password");
+    } catch (err) {
+      setError(
+        isWakingError(err)
+          ? "RevBill is taking longer than usual to wake up. Please try again in a moment."
+          : "Incorrect email or password"
+      );
     } finally {
       setSubmitting(false);
+      setWaking(false);
     }
   }
 
@@ -53,7 +61,7 @@ export default function LoginPage() {
           disabled={submitting}
           className="w-full px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium disabled:opacity-60"
         >
-          {submitting ? "Logging in…" : "Log in"}
+          {waking ? <WakingUp compact /> : submitting ? "Logging in…" : "Log in"}
         </button>
       </form>
 

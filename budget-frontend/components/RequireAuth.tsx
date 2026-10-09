@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, getMe } from "@/lib/api";
+import { User, getMe, withWakeRetry } from "@/lib/api";
+import WakingUp from "@/components/WakingUp";
 import TermsGate from "@/components/TermsGate";
 import OnboardingModal from "@/components/popups/OnboardingModal";
 import WelcomeModal, { shouldSkipWelcome } from "@/components/popups/WelcomeModal";
 
-type AuthState = { status: "loading" } | { status: "authed"; user: User } | { status: "anon" };
+type AuthState = { status: "loading"; waking?: boolean } | { status: "authed"; user: User } | { status: "anon" };
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({ status: "loading" });
   const router = useRouter();
 
   useEffect(() => {
-    getMe()
+    // Keep retrying while the server wakes up -- a timeout then must not be
+    // mistaken for "logged out" and bounce the user to the login page.
+    withWakeRetry(getMe, () => setState((s) => (s.status === "loading" ? { status: "loading", waking: true } : s)))
       .then((user) => setState({ status: "authed", user }))
       .catch(() => {
         setState({ status: "anon" });
@@ -30,7 +33,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const state = useAuth();
 
   if (state.status === "loading") {
-    return <main className="max-w-2xl mx-auto p-6 text-sm text-slate-400">Loading…</main>;
+    return state.waking ? <WakingUp /> : <main className="max-w-2xl mx-auto p-6 text-sm text-slate-400">Loading…</main>;
   }
   if (state.status === "anon") {
     return null; // redirect already in flight
